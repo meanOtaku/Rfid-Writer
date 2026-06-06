@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>RFID Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>RFID Manager</h1>
+
+        <div class="card">
+            <h2>Status</h2>
+            <p id="status">
+                Not connected
+            </p>
+        </div>
+
+        <div class="card">
+            <button id="scan">
+                Scan Networks
+            </button>
+
+            <select id="networks"></select>
+
+            <input type="password" id="password" placeholder="Password">
+
+            <button id="connect">
+                Connect
+            </button>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
