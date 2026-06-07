@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WiFi Configuration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>WiFi Configuration</h1>
+
+        <a class="navButton" href="index.html">
+            Home
+        </a>
+
+        <div class="card">
+
+            <h2>Status</h2>
+
+            <p id="status">
+                Not Connected
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <button id="scan">
+                Scan Networks
+            </button>
+
+            <br><br>
+
+            <select id="networks">
+                <option>
+                    Select Network
+                </option>
+            </select>
+
+            <br><br>
+
+            <input type="password" id="password" placeholder="WiFi Password">
+
+            <br><br>
+
+            <button id="connect">
+                Connect
+            </button>
+
+        </div>
+
+    </div>
+
+    <script src="wifi.js"></script>
+
+</body>
+
+</html>

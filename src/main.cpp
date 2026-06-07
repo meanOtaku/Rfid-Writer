@@ -1,6 +1,3 @@
-#include <SPI.h>
-#include <MFRC522.h>
-
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Preferences.h>
@@ -8,19 +5,20 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 #include <ArduinoJson.h>
+#include "rfid_manager.h"
 
 #define AP_SSID "RFID_Manager"
 #define AP_PASS "12345678"
-
-#define SS_PIN 5
-#define RST_PIN 22
-
-MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 Preferences prefs;
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
+
+RFIDManager rfid(
+    5,
+    22,
+    &ws);
 
 String connectedSSID = "";
 bool wifiConnected = false;
@@ -261,6 +259,39 @@ void setupApi()
             "{\"status\":\"connecting\"}");
       });
 
+  server.on(
+      "/api/rfid/config",
+      HTTP_POST,
+      [](AsyncWebServerRequest *request) {},
+      nullptr,
+      [](AsyncWebServerRequest *request,
+         uint8_t *data,
+         size_t len,
+         size_t index,
+         size_t total)
+      {
+        JsonDocument doc;
+
+        deserializeJson(
+            doc,
+            data,
+            len);
+
+        rfid.setMode(
+            doc["mode"] | "read");
+
+        rfid.setBlock(
+            doc["block"] | 4);
+
+        rfid.setWriteData(
+            doc["data"] | "");
+
+        request->send(
+            200,
+            "application/json",
+            "{\"success\":true}");
+      });
+
   server.serveStatic(
             "/",
             LittleFS,
@@ -271,6 +302,54 @@ void setupApi()
   server.begin();
 }
 
+void handleWifiScan()
+{
+  if (!scanInProgress)
+    return;
+
+  int count =
+      WiFi.scanComplete();
+
+  if (count < 0)
+    return;
+
+  Serial.printf(
+      "Found %d networks\n",
+      count);
+
+  JsonDocument doc;
+
+  JsonArray arr =
+      doc["networks"]
+          .to<JsonArray>();
+
+  for (int i = 0;
+       i < count;
+       i++)
+  {
+    JsonObject net =
+        arr.add<JsonObject>();
+
+    net["ssid"] =
+        WiFi.SSID(i);
+
+    net["rssi"] =
+        WiFi.RSSI(i);
+
+    net["secure"] =
+        WiFi.encryptionType(i) !=
+        WIFI_AUTH_OPEN;
+  }
+
+  serializeJson(
+      doc,
+      cachedNetworks);
+
+  WiFi.scanDelete();
+
+  scanInProgress =
+      false;
+}
 void setup()
 {
   Serial.begin(115200);
@@ -297,9 +376,7 @@ void setup()
       AP_SSID,
       AP_PASS);
 
-  SPI.begin(18, 19, 23, 5);
-
-  mfrc522.PCD_Init();
+  rfid.begin();
 
   Serial.println("RC522 Initialized");
 
@@ -371,83 +448,9 @@ void setup()
 
 void loop()
 {
-  ws.cleanupClients();
+    ws.cleanupClients();
 
-  if (scanInProgress)
-  {
-    int count =
-        WiFi.scanComplete();
+    handleWifiScan();
 
-    if (count >= 0)
-    {
-      Serial.printf(
-          "Found %d networks\n",
-          count);
-
-      JsonDocument doc;
-
-      JsonArray arr =
-          doc["networks"]
-              .to<JsonArray>();
-
-      for (int i = 0;
-           i < count;
-           i++)
-      {
-        JsonObject net =
-            arr.add<JsonObject>();
-
-        net["ssid"] =
-            WiFi.SSID(i);
-
-        net["rssi"] =
-            WiFi.RSSI(i);
-
-        net["secure"] =
-            WiFi.encryptionType(i) !=
-            WIFI_AUTH_OPEN;
-      }
-
-      serializeJson(
-          doc,
-          cachedNetworks);
-
-      WiFi.scanDelete();
-
-      scanInProgress =
-          false;
-    }
-  }
-
-  if (!mfrc522.PICC_IsNewCardPresent())
-    return;
-
-  if (!mfrc522.PICC_ReadCardSerial())
-    return;
-
-  Serial.print("UID: ");
-
-  for (byte i = 0; i < mfrc522.uid.size; i++)
-  {
-    if (mfrc522.uid.uidByte[i] < 0x10)
-      Serial.print("0");
-
-    Serial.print(
-        mfrc522.uid.uidByte[i],
-        HEX);
-
-    Serial.print(" ");
-  }
-
-  Serial.println();
-
-  MFRC522::PICC_Type type =
-      mfrc522.PICC_GetType(
-          mfrc522.uid.sak);
-
-  Serial.print("Type: ");
-  Serial.println(
-      mfrc522.PICC_GetTypeName(type));
-
-  mfrc522.PICC_HaltA();
+    rfid.update();
 }

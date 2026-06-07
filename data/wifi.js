@@ -1,38 +1,18 @@
 const statusLabel =
-    document.getElementById(
-        "status");
+    document.getElementById("status");
 
 const networkSelect =
-    document.getElementById(
-        "networks");
+    document.getElementById("networks");
 
-let socket =
-    new WebSocket(
-        `ws://${location.host}/ws`);
-
-socket.onmessage = e => {
-    let data =
-        JSON.parse(
-            e.data);
-
-    if (data.connected) {
-        statusLabel.innerText =
-            "Connected: " +
-            data.ssid;
-    }
-    else {
-        statusLabel.innerText =
-            "Not Connected";
-    }
-};
-
-async function scan() {
+async function scan()
+{
     networkSelect.innerHTML =
         "<option>Scanning...</option>";
 
     await fetch("/api/scan/start");
 
-    setTimeout(async () => {
+    setTimeout(async () =>
+    {
         let res =
             await fetch(
                 "/api/scan/results");
@@ -42,9 +22,8 @@ async function scan() {
 
         networkSelect.innerHTML = "";
 
-        console.log(data);
-
-        data.networks.forEach(net => {
+        data.networks.forEach(net =>
+        {
             let option =
                 document.createElement(
                     "option");
@@ -61,7 +40,9 @@ async function scan() {
 
     }, 5000);
 }
-async function connectWifi() {
+
+async function connectWifi()
+{
     let ssid =
         networkSelect.value;
 
@@ -80,10 +61,10 @@ async function connectWifi() {
             },
             body:
                 JSON.stringify(
-                    {
-                        ssid,
-                        password
-                    })
+                {
+                    ssid,
+                    password
+                })
         });
 }
 
@@ -93,5 +74,26 @@ document
 
 document
     .getElementById("connect")
-    .onclick =
-    connectWifi;
+    .onclick = connectWifi;
+
+let socket =
+    new WebSocket(
+        `ws://${location.host}/ws`);
+
+socket.onmessage = e =>
+{
+    let data =
+        JSON.parse(e.data);
+
+    if (data.connected)
+    {
+        statusLabel.innerText =
+            "Connected: " +
+            data.ssid;
+    }
+    else
+    {
+        statusLabel.innerText =
+            "Not Connected";
+    }
+};
