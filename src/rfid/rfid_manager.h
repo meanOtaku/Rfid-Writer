@@ -5,6 +5,8 @@
 #include <MFRC522.h>
 #include <ESPAsyncWebServer.h>
 
+#include "rfid/rfid_card.h"
+
 class RFIDManager
 {
 public:
@@ -27,7 +29,7 @@ public:
         const String& data);
 
 private:
-    MFRC522 rfid;
+    RFIDCard card;
 
     AsyncWebSocket* ws;
 

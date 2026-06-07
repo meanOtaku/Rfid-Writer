@@ -4,45 +4,14 @@ const statusLabel =
 const networkSelect =
     document.getElementById("networks");
 
-async function scan()
-{
+async function scan() {
     networkSelect.innerHTML =
         "<option>Scanning...</option>";
 
     await fetch("/api/scan/start");
-
-    setTimeout(async () =>
-    {
-        let res =
-            await fetch(
-                "/api/scan/results");
-
-        let data =
-            await res.json();
-
-        networkSelect.innerHTML = "";
-
-        data.networks.forEach(net =>
-        {
-            let option =
-                document.createElement(
-                    "option");
-
-            option.value =
-                net.ssid;
-
-            option.textContent =
-                `${net.ssid} (${net.rssi} dBm)`;
-
-            networkSelect.appendChild(
-                option);
-        });
-
-    }, 5000);
 }
 
-async function connectWifi()
-{
+async function connectWifi() {
     let ssid =
         networkSelect.value;
 
@@ -61,10 +30,10 @@ async function connectWifi()
             },
             body:
                 JSON.stringify(
-                {
-                    ssid,
-                    password
-                })
+                    {
+                        ssid,
+                        password
+                    })
         });
 }
 
@@ -80,19 +49,42 @@ let socket =
     new WebSocket(
         `ws://${location.host}/ws`);
 
-socket.onmessage = e =>
-{
+socket.onmessage = e => {
     let data =
         JSON.parse(e.data);
 
-    if (data.connected)
-    {
+    if (data.type === "scan_results") {
+        networkSelect.innerHTML = "";
+        if (data.networks.length === 0) {
+            networkSelect.innerHTML =
+                "<option>No Networks Found</option>";
+
+            return;
+        }
+        data.networks.forEach(net => {
+            let option =
+                document.createElement(
+                    "option");
+
+            option.value =
+                net.ssid;
+
+            option.textContent =
+                `${net.ssid} (${net.rssi} dBm)`;
+
+            networkSelect.appendChild(
+                option);
+        });
+
+        return;
+    }
+
+    if (data.connected) {
         statusLabel.innerText =
             "Connected: " +
             data.ssid;
     }
-    else
-    {
+    else {
         statusLabel.innerText =
             "Not Connected";
     }
