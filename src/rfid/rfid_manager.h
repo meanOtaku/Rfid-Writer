@@ -13,25 +13,25 @@ public:
     RFIDManager(
         uint8_t ssPin,
         uint8_t rstPin,
-        AsyncWebSocket* websocket);
+        AsyncWebSocket *websocket);
 
     void begin();
 
     void update();
 
     void setMode(
-        const String& mode);
+        const String &mode);
 
     void setBlock(
         int block);
 
     void setWriteData(
-        const String& data);
+        const String &data);
 
 private:
     RFIDCard card;
 
-    AsyncWebSocket* ws;
+    AsyncWebSocket *ws;
 
     String lastUID = "";
 
@@ -42,7 +42,7 @@ private:
     String writeData;
 
     void sendUID(
-        const String& uid);
+        const String &uid);
 
     String readBlock();
 

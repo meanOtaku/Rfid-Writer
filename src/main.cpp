@@ -15,8 +15,8 @@ WiFiManager wifi(
     &ws);
 
 RFIDManager rfid(
-    5,   // SS
-    22,  // RST
+    5,  // SS
+    22, // RST
     &ws);
 
 void setupRFIDApi()

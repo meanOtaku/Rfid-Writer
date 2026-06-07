@@ -9,8 +9,8 @@ class WiFiManager
 {
 public:
     WiFiManager(
-        AsyncWebServer* server,
-        AsyncWebSocket* ws);
+        AsyncWebServer *server,
+        AsyncWebSocket *ws);
 
     void begin();
 
@@ -19,8 +19,8 @@ public:
     void setupApi();
 
 private:
-    AsyncWebServer* server;
-    AsyncWebSocket* ws;
+    AsyncWebServer *server;
+    AsyncWebSocket *ws;
 
     Preferences prefs;
 
@@ -34,12 +34,12 @@ private:
     void broadcastStatus();
 
     void saveWifiCredentials(
-        const String& ssid,
-        const String& password);
+        const String &ssid,
+        const String &password);
 
     void startWifiConnection(
-        const String& ssid,
-        const String& password);
+        const String &ssid,
+        const String &password);
 
     void connectStoredWifi();
 
