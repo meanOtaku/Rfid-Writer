@@ -32,6 +32,8 @@ void WiFiManager::begin() {
             wifiConnected = true;
             wifiConnecting = false;
 
+            reconnectAttempts = 0;
+
             Serial.print("STA IP: ");
             Serial.println(WiFi.localIP());
 
@@ -39,12 +41,40 @@ void WiFiManager::begin() {
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+
+            if (scanInProgress) {
+                Serial.println("Ignoring disconnect during scan");
+
+                break;
+            }
+
             wifiConnected = false;
             wifiConnecting = false;
 
-            Serial.println("STA Disconnected");
+            Serial.printf("STA Disconnected. Reason=%d\n", info.wifi_sta_disconnected.reason);
+
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+
+                Serial.printf("Reconnect %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
+
+                String ssid = prefs.getString("ssid", "");
+
+                String pass = prefs.getString("pass", "");
+
+                WiFi.begin(ssid.c_str(), pass.c_str());
+            } else {
+                Serial.println("Max reconnect attempts reached");
+
+                clearWifiCredentials();
+
+                WiFi.disconnect(true);
+
+                WiFi.mode(WIFI_AP);
+            }
 
             broadcastStatus();
+
             break;
 
         default:
@@ -246,8 +276,20 @@ void WiFiManager::setupApi() {
 
             String pass = doc["password"] | "";
 
+            reconnectAttempts = 0;
             startWifiConnection(ssid, pass);
 
             request->send(200, "application/json", "{\"status\":\"connecting\"}");
         });
+}
+
+void WiFiManager::clearWifiCredentials() {
+    prefs.remove("ssid");
+    prefs.remove("pass");
+
+    connectedSSID = "";
+
+    reconnectAttempts = 0;
+
+    Serial.println("WiFi credentials cleared");
 }

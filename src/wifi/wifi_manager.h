@@ -28,6 +28,10 @@ private:
 
     bool scanInProgress = false;
 
+    int reconnectAttempts = 0;
+
+    static constexpr int MAX_RECONNECT_ATTEMPTS = 3;
+
     void broadcastStatus();
 
     void saveWifiCredentials(const String &ssid, const String &password);
@@ -41,4 +45,6 @@ private:
     void handleWifiScan();
 
     void setupWebSocket();
+
+    void clearWifiCredentials();
 };
