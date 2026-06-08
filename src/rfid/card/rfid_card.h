@@ -14,7 +14,9 @@ public:
 
     String getUID();
 
-    bool authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey = nullptr);
+    bool authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey = nullptr, bool logFailure = true);
+
+    bool authenticateKeyB(uint8_t block, MFRC522::MIFARE_Key *customKey = nullptr, bool logFailure = true);
 
     bool readBlock(uint8_t block, uint8_t *buffer);
 
@@ -24,11 +26,15 @@ public:
 
     bool writeBlockRaw(uint8_t block, const uint8_t *buffer);
 
+    bool selectCurrent();
+
     void stopCrypto();
 
     void halt();
 
     MFRC522::PICC_Type getType();
+
+    String getTypeName();
 
 private:
     MFRC522 rfid;

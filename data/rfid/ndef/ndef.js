@@ -1,7 +1,6 @@
 const rfidUid = document.getElementById("rfidUid");
 const rfidStatus = document.getElementById("rfidStatus");
 const blockData = document.getElementById("blockData");
-const formatButton = document.getElementById("formatButton");
 
 function getRFIDMode() {
     return document.querySelector('input[name="rfidMode"]:checked').value;
@@ -22,13 +21,6 @@ async function saveRFIDConfig() {
     });
 }
 
-async function triggerFormat() {
-    rfidStatus.innerText = "Waiting for card to format...";
-    await fetch("/api/rfid/format", {
-        method: "POST"
-    });
-}
-
 let socket = new WebSocket(`ws://${location.host}/ws`);
 
 socket.onmessage = e => {
@@ -40,12 +32,20 @@ socket.onmessage = e => {
     }
 
     if (data.type === "rfid_read") {
+        const readText = data.success !== false
+            ? (data.data || "Empty NDEF message")
+            : "Read failed: " + (data.error || "unknown");
+
         rfidUid.innerText = data.uid;
         rfidStatus.innerText = data.success !== false
             ? "NDEF Read Successful"
             : "NDEF Read Failed: " + (data.error || "unknown");
-        blockData.value = data.data;
-        document.getElementById("readResult").innerText = data.data;
+
+        if (data.success !== false) {
+            blockData.value = data.data || "";
+        }
+
+        document.getElementById("readResult").innerText = readText;
     }
 
     if (data.type === "rfid_write") {
@@ -55,12 +55,6 @@ socket.onmessage = e => {
             : "NDEF Write Failed: " + (data.error || "unknown");
     }
 
-    if (data.type === "rfid_format") {
-        rfidUid.innerText = data.uid;
-        rfidStatus.innerText = data.success
-            ? "NDEF Format Successful"
-            : "NDEF Format Failed: " + (data.error || "unknown");
-    }
 };
 
 document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
@@ -68,6 +62,5 @@ document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
 });
 
 blockData.addEventListener("input", saveRFIDConfig);
-formatButton.addEventListener("click", triggerFormat);
 
 saveRFIDConfig();

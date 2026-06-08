@@ -52,14 +52,43 @@ String RFIDCard::getUID() {
     return uid;
 }
 
-bool RFIDCard::authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey) {
+bool RFIDCard::authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey, bool logFailure) {
     MFRC522::StatusCode status;
     MFRC522::MIFARE_Key *authKey = customKey ? customKey : &key;
 
     status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, authKey, &(rfid.uid));
 
     if (status != MFRC522::STATUS_OK) {
+        if (!logFailure) {
+            return false;
+        }
+
         Serial.print("Auth failed block ");
+
+        Serial.print(block);
+
+        Serial.print(": ");
+
+        Serial.println(rfid.GetStatusCodeName(status));
+
+        return false;
+    }
+
+    return true;
+}
+
+bool RFIDCard::authenticateKeyB(uint8_t block, MFRC522::MIFARE_Key *customKey, bool logFailure) {
+    MFRC522::StatusCode status;
+    MFRC522::MIFARE_Key *authKey = customKey ? customKey : &key;
+
+    status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_B, block, authKey, &(rfid.uid));
+
+    if (status != MFRC522::STATUS_OK) {
+        if (!logFailure) {
+            return false;
+        }
+
+        Serial.print("Auth B failed block ");
 
         Serial.print(block);
 
@@ -119,6 +148,10 @@ bool RFIDCard::writeBlockRaw(uint8_t block, const uint8_t *buffer) {
     return true;
 }
 
+bool RFIDCard::selectCurrent() {
+    return rfid.PICC_Select(&(rfid.uid)) == MFRC522::STATUS_OK;
+}
+
 bool RFIDCard::readBlock(uint8_t block, uint8_t *buffer) {
     if (!authenticate(block)) {
         return false;
@@ -161,4 +194,8 @@ void RFIDCard::halt() {
 
 MFRC522::PICC_Type RFIDCard::getType() {
     return rfid.PICC_GetType(rfid.uid.sak);
+}
+
+String RFIDCard::getTypeName() {
+    return String(MFRC522::PICC_GetTypeName(getType()));
 }

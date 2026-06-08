@@ -58,6 +58,7 @@ void RFIDManager::sendUID(const String &uid) {
 
     doc["type"] = "rfid";
     doc["uid"] = uid;
+    doc["cardType"] = card.getTypeName();
 
     String msg;
 
@@ -82,6 +83,8 @@ void RFIDManager::update() {
 
     lastUID = uid;
 
+    String cardType = card.getTypeName();
+
     sendUID(uid);
 
     String errorMsg = "";
@@ -94,6 +97,7 @@ void RFIDManager::update() {
 
         doc["type"] = "rfid_format";
         doc["uid"] = uid;
+        doc["cardType"] = cardType;
         doc["success"] = ok;
         if (!ok) {
             doc["error"] = errorMsg;
@@ -118,6 +122,7 @@ void RFIDManager::update() {
 
         doc["type"] = "rfid_read";
         doc["uid"] = uid;
+        doc["cardType"] = cardType;
         doc["data"] = data;
         doc["success"] = ok;
         if (!ok) {
@@ -142,6 +147,7 @@ void RFIDManager::update() {
 
         doc["type"] = "rfid_write";
         doc["uid"] = uid;
+        doc["cardType"] = cardType;
         doc["success"] = ok;
         if (!ok) {
             doc["error"] = errorMsg;

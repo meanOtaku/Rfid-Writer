@@ -16,66 +16,69 @@
             Home
         </a>
 
-        <div class="card">
+        <div class="toolGrid">
 
-            <h2>RFID Status</h2>
+            <div>
 
-            <p>
-                UID:
-                <span id="rfidUid">
-                    No Card
-                </span>
-            </p>
+                <div class="card">
 
-            <p>
-                Status:
-                <span id="rfidStatus">
-                    Waiting for card...
-                </span>
-            </p>
+                    <h2>RFID Status</h2>
 
-        </div>
+                    <p>
+                        UID:
+                        <span id="rfidUid">
+                            No Card
+                        </span>
+                    </p>
 
-        <div class="card">
+                    <p>
+                        Status:
+                        <span id="rfidStatus">
+                            Waiting for card...
+                        </span>
+                    </p>
 
-            <h2>Mode</h2>
+                </div>
 
-            <label>
-                <input type="radio" name="rfidMode" value="read" checked>
+                <div class="card">
 
-                Read Block
-            </label>
+                    <h2>Mode</h2>
 
-            <br><br>
+                    <label>
+                        <input type="radio" name="rfidMode" value="read" checked>
 
-            <label>
-                <input type="radio" name="rfidMode" value="write">
+                        Read Block
+                    </label>
 
-                Write Block
-            </label>
+                    <br>
 
-        </div>
+                    <label>
+                        <input type="radio" name="rfidMode" value="write">
 
-        <div class="card">
+                        Write Block
+                    </label>
 
-            <h2>Block Editor</h2>
+                </div>
 
-            <input id="blockNumber" type="number" min="4" max="62" value="4">
+                <div class="card">
 
-            <br><br>
+                    <h2>Block Editor</h2>
 
-            <textarea id="blockData" rows="8" placeholder="Enter text to write">
-        </textarea>
+                    <input id="blockNumber" type="number" min="4" max="62" value="4">
 
-        </div>
+                    <textarea id="blockData" rows="6" placeholder="Enter text to write"></textarea>
 
-        <div class="card">
+                </div>
 
-            <h2>Read Result</h2>
+            </div>
 
-            <pre id="readResult">
-No data read yet
-        </pre>
+            <div class="card resultCard">
+
+                <h2>Read Result</h2>
+
+                <pre id="readResult">No data read yet</pre>
+
+            </div>
 
         </div>
 
