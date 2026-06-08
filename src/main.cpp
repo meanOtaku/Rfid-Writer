@@ -40,6 +40,12 @@ void setupRFIDApi() {
 
             request->send(200, "application/json", "{\"success\":true}");
         });
+
+    server.on(
+        "/api/rfid/format", HTTP_POST, [](AsyncWebServerRequest *request) {
+            rfid.triggerFormat();
+            request->send(200, "application/json", "{\"success\":true}");
+        });
 }
 
 void setup() {

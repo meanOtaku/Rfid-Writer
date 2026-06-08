@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Mifare Classic Tools</title>
+    <link rel="stylesheet" href="../../style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Mifare Classic Tools</h1>
+
+        <a class="navButton" href="../../index.html">
+            Home
+        </a>
+
+        <div class="card">
+
+            <h2>RFID Status</h2>
+
+            <p>
+                UID:
+                <span id="rfidUid">
+                    No Card
+                </span>
+            </p>
+
+            <p>
+                Status:
+                <span id="rfidStatus">
+                    Waiting for card...
+                </span>
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <h2>Mode</h2>
+
+            <label>
+                <input type="radio" name="rfidMode" value="read" checked>
+
+                Read Block
+            </label>
+
+            <br><br>
+
+            <label>
+                <input type="radio" name="rfidMode" value="write">
+
+                Write Block
+            </label>
+
+        </div>
+
+        <div class="card">
+
+            <h2>Block Editor</h2>
+
+            <input id="blockNumber" type="number" min="4" max="62" value="4">
+
+            <br><br>
+
+            <textarea id="blockData" rows="8" placeholder="Enter text to write">
+        </textarea>
+
+        </div>
+
+        <div class="card">
+
+            <h2>Read Result</h2>
+
+            <pre id="readResult">
+No data read yet
+        </pre>
+
+        </div>
+
+    </div>
+
+    <script src="mifare.js"></script>
+
+</body>
+
+</html>

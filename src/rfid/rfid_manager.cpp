@@ -19,6 +19,8 @@ void RFIDManager::setBlock(int block) { blockNumber = block; }
 
 void RFIDManager::setWriteData(const String &data) { writeData = data; }
 
+void RFIDManager::triggerFormat() { pendingFormat = true; }
+
 void RFIDManager::sendUID(const String &uid) {
     JsonDocument doc;
 
@@ -52,7 +54,25 @@ void RFIDManager::update() {
 
     String errorMsg = "";
 
-    if (mode == "read") {
+    if (pendingFormat) {
+        bool ok = MifareClassic::formatNDEF(card, errorMsg);
+        pendingFormat = false;
+
+        JsonDocument doc;
+
+        doc["type"] = "rfid_format";
+        doc["uid"] = uid;
+        doc["success"] = ok;
+        if (!ok) {
+            doc["error"] = errorMsg;
+        }
+
+        String msg;
+
+        serializeJson(doc, msg);
+
+        ws->textAll(msg);
+    } else if (mode == "read") {
         String data = "";
         bool ok = false;
 

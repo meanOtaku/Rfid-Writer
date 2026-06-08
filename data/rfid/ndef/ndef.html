@@ -2,17 +2,17 @@
 <html>
 
 <head>
-    <title>RFID Tools</title>
-    <link rel="stylesheet" href="style.css">
+    <title>NDEF Tools</title>
+    <link rel="stylesheet" href="../../style.css">
 </head>
 
 <body>
 
     <div class="container">
 
-        <h1>RFID Tools</h1>
+        <h1>NDEF Tools</h1>
 
-        <a class="navButton" href="../index.html">
+        <a class="navButton" href="../../index.html">
             Home
         </a>
 
@@ -43,7 +43,7 @@
             <label>
                 <input type="radio" name="rfidMode" value="read" checked>
 
-                Read
+                Read NDEF
             </label>
 
             <br><br>
@@ -51,40 +51,16 @@
             <label>
                 <input type="radio" name="rfidMode" value="write">
 
-                Write
+                Write NDEF
             </label>
 
         </div>
 
         <div class="card">
 
-            <h2>Format</h2>
+            <h2>NDEF Message Editor</h2>
 
-            <label>
-                <input type="radio" name="rfidFormat" value="raw" checked>
-
-                Raw Block
-            </label>
-
-            <br><br>
-
-            <label>
-                <input type="radio" name="rfidFormat" value="ndef">
-
-                NDEF
-            </label>
-
-        </div>
-
-        <div id="blockEditorCard" class="card">
-
-            <h2>Block Editor</h2>
-
-            <input id="blockNumber" type="number" min="4" max="62" value="4">
-
-            <br><br>
-
-            <textarea id="blockData" rows="8" placeholder="Enter text to write">
+            <textarea id="blockData" rows="8" placeholder="Enter NDEF text message to write">
         </textarea>
 
         </div>
@@ -99,9 +75,21 @@ No data read yet
 
         </div>
 
+        <div class="card">
+
+            <h2>Tag Management</h2>
+
+            <p>Format Mifare Classic sectors to make them compatible with NDEF containers.</p>
+
+            <button id="formatButton" class="navButton" style="background-color: #d9534f; color: white; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 5px;">
+                Format Tag as NDEF
+            </button>
+
+        </div>
+
     </div>
 
-    <script src="rfid.js"></script>
+    <script src="ndef.js"></script>
 
 </body>
 

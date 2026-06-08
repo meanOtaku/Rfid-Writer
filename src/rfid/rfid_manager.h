@@ -23,6 +23,8 @@ public:
 
     void setWriteData(const String &data);
 
+    void triggerFormat();
+
 private:
     RFIDCard card;
 
@@ -33,6 +35,8 @@ private:
     String mode = "read";
 
     String formatMode = "raw";
+
+    bool pendingFormat = false;
 
     int blockNumber = 4;
 
