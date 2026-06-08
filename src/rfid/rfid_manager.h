@@ -5,7 +5,7 @@
 #include <MFRC522.h>
 #include <SPI.h>
 
-#include "rfid/rfid_card.h"
+#include "rfid/card/rfid_card.h"
 
 class RFIDManager {
 public:
