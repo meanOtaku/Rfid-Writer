@@ -1,6 +1,4 @@
 #include <Arduino.h>
-#include <ArduinoJson.h>
-#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
 
@@ -14,39 +12,8 @@ WiFiManager wifi(&server, &ws);
 
 RFIDManager rfid(5,  // SS
                  22, // RST
+                 &server,
                  &ws);
-
-void setupRFIDApi() {
-    server.on(
-        "/api/rfid/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, nullptr,
-        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            JsonDocument doc;
-
-            auto err = deserializeJson(doc, data, len);
-
-            if (err) {
-                request->send(400, "application/json", "{\"error\":\"invalid json\"}");
-
-                return;
-            }
-
-            rfid.setMode(doc["mode"] | "read");
-
-            rfid.setFormat(doc["format"] | "raw");
-
-            rfid.setBlock(doc["block"] | 4);
-
-            rfid.setWriteData(doc["data"] | "");
-
-            request->send(200, "application/json", "{\"success\":true}");
-        });
-
-    server.on(
-        "/api/rfid/format", HTTP_POST, [](AsyncWebServerRequest *request) {
-            rfid.triggerFormat();
-            request->send(200, "application/json", "{\"success\":true}");
-        });
-}
 
 void setup() {
     Serial.begin(115200);
@@ -65,7 +32,7 @@ void setup() {
 
     wifi.setupApi();
 
-    setupRFIDApi();
+    rfid.setupApi();
 
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 

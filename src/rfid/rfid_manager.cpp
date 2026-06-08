@@ -2,7 +2,9 @@
 #include <ArduinoJson.h>
 #include "rfid/mifare/mifare_classic.h"
 
-RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebSocket *websocket) : card(ssPin, rstPin) {
+RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *srv, AsyncWebSocket *websocket)
+    : card(ssPin, rstPin) {
+    server = srv;
     ws = websocket;
 }
 
@@ -20,6 +22,35 @@ void RFIDManager::setBlock(int block) { blockNumber = block; }
 void RFIDManager::setWriteData(const String &data) { writeData = data; }
 
 void RFIDManager::triggerFormat() { pendingFormat = true; }
+
+void RFIDManager::setupApi() {
+    server->on(
+        "/api/rfid/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+
+            auto err = deserializeJson(doc, data, len);
+
+            if (err) {
+                request->send(400, "application/json", "{\"error\":\"invalid json\"}");
+
+                return;
+            }
+
+            setMode(doc["mode"] | "read");
+            setFormat(doc["format"] | "raw");
+            setBlock(doc["block"] | 4);
+            setWriteData(doc["data"] | "");
+
+            request->send(200, "application/json", "{\"success\":true}");
+        });
+
+    server->on("/api/rfid/format", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        triggerFormat();
+
+        request->send(200, "application/json", "{\"success\":true}");
+    });
+}
 
 void RFIDManager::sendUID(const String &uid) {
     JsonDocument doc;

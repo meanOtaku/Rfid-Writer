@@ -9,25 +9,18 @@
 
 class RFIDManager {
 public:
-    RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebSocket *websocket);
+    RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *server, AsyncWebSocket *websocket);
 
     void begin();
 
     void update();
 
-    void setMode(const String &mode);
-
-    void setFormat(const String &format);
-
-    void setBlock(int block);
-
-    void setWriteData(const String &data);
-
-    void triggerFormat();
+    void setupApi();
 
 private:
     RFIDCard card;
 
+    AsyncWebServer *server;
     AsyncWebSocket *ws;
 
     String lastUID = "";
@@ -41,6 +34,16 @@ private:
     int blockNumber = 4;
 
     String writeData;
+
+    void setMode(const String &mode);
+
+    void setFormat(const String &format);
+
+    void setBlock(int block);
+
+    void setWriteData(const String &data);
+
+    void triggerFormat();
 
     void sendUID(const String &uid);
 };
