@@ -1,0 +1,19 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+UseTab: Never
+
+ColumnLimit: 120
+
+BreakBeforeBraces: Attach
+
+BinPackArguments: true
+BinPackParameters: true
+
+AlignAfterOpenBracket: Align
+
+SeparateDefinitionBlocks: Always
+
+AccessModifierOffset: -4
+IndentAccessModifiers: false

@@ -1,16 +1,13 @@
 #pragma once
 
 #include <Arduino.h>
-#include <WiFi.h>
-#include <Preferences.h>
 #include <ESPAsyncWebServer.h>
+#include <Preferences.h>
+#include <WiFi.h>
 
-class WiFiManager
-{
+class WiFiManager {
 public:
-    WiFiManager(
-        AsyncWebServer *server,
-        AsyncWebSocket *ws);
+    WiFiManager(AsyncWebServer *server, AsyncWebSocket *ws);
 
     void begin();
 
@@ -33,13 +30,9 @@ private:
 
     void broadcastStatus();
 
-    void saveWifiCredentials(
-        const String &ssid,
-        const String &password);
+    void saveWifiCredentials(const String &ssid, const String &password);
 
-    void startWifiConnection(
-        const String &ssid,
-        const String &password);
+    void startWifiConnection(const String &ssid, const String &password);
 
     void connectStoredWifi();
 

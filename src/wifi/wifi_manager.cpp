@@ -3,225 +3,154 @@
 #define AP_SSID "RFID_Manager"
 #define AP_PASS "12345678"
 
-WiFiManager::WiFiManager(
-    AsyncWebServer *srv,
-    AsyncWebSocket *websocket)
-{
+WiFiManager::WiFiManager(AsyncWebServer *srv, AsyncWebSocket *websocket) {
     server = srv;
     ws = websocket;
 }
 
-void WiFiManager::begin()
-{
-    prefs.begin(
-        "wifi",
-        false);
+void WiFiManager::begin() {
+    prefs.begin("wifi", false);
 
-    WiFi.mode(
-        WIFI_AP_STA);
+    WiFi.mode(WIFI_AP_STA);
 
-    WiFi.softAP(
-        AP_SSID,
-        AP_PASS);
+    WiFi.softAP(AP_SSID, AP_PASS);
 
     Serial.println();
-    Serial.println(
-        "Access Point Started");
+    Serial.println("Access Point Started");
 
-    Serial.print(
-        "AP IP: ");
+    Serial.print("AP IP: ");
 
-    Serial.println(
-        WiFi.softAPIP());
+    Serial.println(WiFi.softAPIP());
 
-    WiFi.onEvent(
-        [this](arduino_event_id_t event,
-               arduino_event_info_t info)
-        {
-            switch (event)
-            {
-            case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-                Serial.println("STA Connected");
-                break;
+    WiFi.onEvent([this](arduino_event_id_t event, arduino_event_info_t info) {
+        switch (event) {
+        case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+            Serial.println("STA Connected");
+            break;
 
-            case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-                wifiConnected = true;
-                wifiConnecting = false;
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+            wifiConnected = true;
+            wifiConnecting = false;
 
-                Serial.print("STA IP: ");
-                Serial.println(WiFi.localIP());
+            Serial.print("STA IP: ");
+            Serial.println(WiFi.localIP());
 
-                broadcastStatus();
-                break;
+            broadcastStatus();
+            break;
 
-            case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-                wifiConnected = false;
-                wifiConnecting = false;
+        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+            wifiConnected = false;
+            wifiConnecting = false;
 
-                Serial.println("STA Disconnected");
+            Serial.println("STA Disconnected");
 
-                broadcastStatus();
-                break;
+            broadcastStatus();
+            break;
 
-            default:
-                break;
-            }
-        });
+        default:
+            break;
+        }
+    });
 
     connectStoredWifi();
 
     setupWebSocket();
 }
 
-void WiFiManager::update()
-{
-    handleWifiScan();
-}
+void WiFiManager::update() { handleWifiScan(); }
 
-void WiFiManager::broadcastStatus()
-{
+void WiFiManager::broadcastStatus() {
     JsonDocument doc;
 
-    doc["connected"] =
-        wifiConnected;
+    doc["connected"] = wifiConnected;
 
-    doc["ssid"] =
-        connectedSSID;
+    doc["ssid"] = connectedSSID;
 
-    if (wifiConnected)
-    {
-        doc["ip"] =
-            WiFi.localIP()
-                .toString();
+    if (wifiConnected) {
+        doc["ip"] = WiFi.localIP().toString();
     }
 
     String msg;
 
-    serializeJson(
-        doc,
-        msg);
+    serializeJson(doc, msg);
 
     ws->textAll(msg);
 }
 
-void WiFiManager::saveWifiCredentials(
-    const String &ssid,
-    const String &password)
-{
-    prefs.putString(
-        "ssid",
-        ssid);
+void WiFiManager::saveWifiCredentials(const String &ssid, const String &password) {
+    prefs.putString("ssid", ssid);
 
-    prefs.putString(
-        "pass",
-        password);
+    prefs.putString("pass", password);
 }
 
-void WiFiManager::startWifiConnection(
-    const String &ssid,
-    const String &password)
-{
-    Serial.printf(
-        "Connecting to %s\n",
-        ssid.c_str());
+void WiFiManager::startWifiConnection(const String &ssid, const String &password) {
+    Serial.printf("Connecting to %s\n", ssid.c_str());
 
-    saveWifiCredentials(
-        ssid,
-        password);
+    saveWifiCredentials(ssid, password);
 
-    connectedSSID =
-        ssid;
+    connectedSSID = ssid;
 
-    wifiConnecting =
-        true;
+    wifiConnecting = true;
 
-    WiFi.begin(
-        ssid.c_str(),
-        password.c_str());
+    WiFi.begin(ssid.c_str(), password.c_str());
 }
 
-void WiFiManager::connectStoredWifi()
-{
-    if (!prefs.isKey("ssid"))
-    {
-        Serial.println(
-            "No saved WiFi credentials");
+void WiFiManager::connectStoredWifi() {
+    if (!prefs.isKey("ssid")) {
+        Serial.println("No saved WiFi credentials");
 
         return;
     }
 
-    String ssid =
-        prefs.getString(
-            "ssid");
+    String ssid = prefs.getString("ssid");
 
-    String pass =
-        prefs.getString(
-            "pass");
+    String pass = prefs.getString("pass");
 
-    startWifiConnection(
-        ssid,
-        pass);
+    startWifiConnection(ssid, pass);
 }
 
-void WiFiManager::startWifiScan()
-{
-    if (scanInProgress)
-    {
+void WiFiManager::startWifiScan() {
+    if (scanInProgress) {
         return;
     }
 
-    Serial.println(
-        "Starting WiFi scan");
+    Serial.println("Starting WiFi scan");
 
-    scanInProgress =
-        true;
+    scanInProgress = true;
 
     WiFi.scanDelete();
 
-    WiFi.scanNetworks(
-        true,
-        true);
+    WiFi.scanNetworks(true, true);
 }
 
-void WiFiManager::handleWifiScan()
-{
-    if (!scanInProgress)
-    {
+void WiFiManager::handleWifiScan() {
+    if (!scanInProgress) {
         return;
     }
 
-    int count =
-        WiFi.scanComplete();
+    int count = WiFi.scanComplete();
 
-    if (count < 0)
-    {
+    if (count < 0) {
         return;
     }
 
-    Serial.printf(
-        "Found %d networks\n",
-        count);
+    Serial.printf("Found %d networks\n", count);
 
-    String json =
-        "{\"type\":\"scan_results\",\"networks\":[";
+    String json = "{\"type\":\"scan_results\",\"networks\":[";
 
     bool first = true;
 
-    for (int i = 0; i < count; i++)
-    {
-        String ssid =
-            WiFi.SSID(i);
+    for (int i = 0; i < count; i++) {
+        String ssid = WiFi.SSID(i);
 
-        if (ssid.length() == 0)
-        {
+        if (ssid.length() == 0) {
             continue;
         }
 
         ssid.replace("\\", "\\\\");
         ssid.replace("\"", "\\\"");
 
-        if (!first)
-        {
+        if (!first) {
             json += ",";
         }
 
@@ -231,9 +160,7 @@ void WiFiManager::handleWifiScan()
         json += "\"ssid\":\"" + ssid + "\",";
         json += "\"rssi\":" + String(WiFi.RSSI(i)) + ",";
         json += "\"secure\":";
-        json += (WiFi.encryptionType(i) != WIFI_AUTH_OPEN)
-                    ? "true"
-                    : "false";
+        json += (WiFi.encryptionType(i) != WIFI_AUTH_OPEN) ? "true" : "false";
         json += "}";
     }
 
@@ -248,260 +175,79 @@ void WiFiManager::handleWifiScan()
     scanInProgress = false;
 }
 
-// void WiFiManager::handleWifiScan()
-// {
-//     if (!scanInProgress)
-//     {
-//         return;
-//     }
+void WiFiManager::setupWebSocket() {
+    ws->onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg,
+                       uint8_t *data, size_t len) {
+        if (type == WS_EVT_CONNECT) {
+            Serial.printf("Client %u connected\n", client->id());
 
-//     int count = WiFi.scanComplete();
+            JsonDocument doc;
 
-//     if (count < 0)
-//     {
-//         return;
-//     }
+            doc["connected"] = wifiConnected;
 
-//     Serial.printf(
-//         "Found %d networks\n",
-//         count);
+            doc["ssid"] = connectedSSID;
 
-//     cachedNetworks = "{\"networks\":[";
-
-//     bool first = true;
-
-//     for (int i = 0; i < count; i++)
-//     {
-//         String ssid =
-//             WiFi.SSID(i);
-
-//         ssid.replace("\\", "\\\\");
-//         ssid.replace("\"", "\\\"");
-
-//         if (ssid.length() == 0)
-//         {
-//             continue;
-//         }
-
-//         if (!first)
-//         {
-//             cachedNetworks += ",";
-//         }
-
-//         first = false;
-
-//         cachedNetworks += "{";
-//         cachedNetworks += "\"ssid\":\"" + ssid + "\",";
-//         cachedNetworks += "\"rssi\":" + String(WiFi.RSSI(i)) + ",";
-//         cachedNetworks += "\"secure\":";
-//         cachedNetworks += (WiFi.encryptionType(i) != WIFI_AUTH_OPEN)
-//                               ? "true"
-//                               : "false";
-//         cachedNetworks += "}";
-//     }
-
-//     cachedNetworks += "]}";
-
-//     Serial.println(cachedNetworks);
-
-//     WiFi.scanDelete();
-
-//     scanInProgress = false;
-// }
-
-// void WiFiManager::handleWifiScan()
-// {
-//     if (!scanInProgress)
-//     {
-//         return;
-//     }
-
-//     int count =
-//         WiFi.scanComplete();
-
-//     if (count < 0)
-//     {
-//         return;
-//     }
-
-//     Serial.printf(
-//         "Found %d networks\n",
-//         count);
-
-//     JsonDocument doc;
-
-//     JsonArray arr =
-//         doc["networks"]
-//             .to<JsonArray>();
-
-//     for (int i = 0;
-//          i < count;
-//          i++)
-//     {
-//         JsonObject net =
-//             arr.add<JsonObject>();
-
-//         net["ssid"] =
-//             WiFi.SSID(i);
-
-//         net["rssi"] =
-//             WiFi.RSSI(i);
-
-//         net["secure"] =
-//             WiFi.encryptionType(i) !=
-//             WIFI_AUTH_OPEN;
-//     }
-
-//     serializeJson(
-//         doc,
-//         cachedNetworks);
-//     Serial.println(cachedNetworks);
-//     WiFi.scanDelete();
-
-//     scanInProgress =
-//         false;
-// }
-
-void WiFiManager::setupWebSocket()
-{
-    ws->onEvent(
-        [this](
-            AsyncWebSocket *server,
-            AsyncWebSocketClient *client,
-            AwsEventType type,
-            void *arg,
-            uint8_t *data,
-            size_t len)
-        {
-            if (type == WS_EVT_CONNECT)
-            {
-                Serial.printf(
-                    "Client %u connected\n",
-                    client->id());
-
-                JsonDocument doc;
-
-                doc["connected"] =
-                    wifiConnected;
-
-                doc["ssid"] =
-                    connectedSSID;
-
-                if (wifiConnected)
-                {
-                    doc["ip"] =
-                        WiFi.localIP()
-                            .toString();
-                }
-
-                String msg;
-
-                serializeJson(
-                    doc,
-                    msg);
-
-                client->text(msg);
+            if (wifiConnected) {
+                doc["ip"] = WiFi.localIP().toString();
             }
-        });
 
-    server->addHandler(
-        ws);
+            String msg;
+
+            serializeJson(doc, msg);
+
+            client->text(msg);
+        }
+    });
+
+    server->addHandler(ws);
 }
 
-void WiFiManager::setupApi()
-{
+void WiFiManager::setupApi() {
+    server->on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+
+        doc["connected"] = wifiConnected;
+
+        doc["ssid"] = connectedSSID;
+
+        doc["ap_ip"] = WiFi.softAPIP().toString();
+
+        if (wifiConnected) {
+            doc["sta_ip"] = WiFi.localIP().toString();
+        }
+
+        String out;
+
+        serializeJson(doc, out);
+
+        request->send(200, "application/json", out);
+    });
+
+    server->on("/api/scan/start", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        startWifiScan();
+
+        request->send(200, "application/json", "{\"status\":\"started\"}");
+    });
+
     server->on(
-        "/api/status",
-        HTTP_GET,
-        [this](AsyncWebServerRequest *request)
-        {
+        "/api/connect", HTTP_POST, [](AsyncWebServerRequest *request) {}, nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             JsonDocument doc;
 
-            doc["connected"] =
-                wifiConnected;
+            auto err = deserializeJson(doc, data, len);
 
-            doc["ssid"] =
-                connectedSSID;
-
-            doc["ap_ip"] =
-                WiFi.softAPIP()
-                    .toString();
-
-            if (wifiConnected)
-            {
-                doc["sta_ip"] =
-                    WiFi.localIP()
-                        .toString();
-            }
-
-            String out;
-
-            serializeJson(
-                doc,
-                out);
-
-            request->send(
-                200,
-                "application/json",
-                out);
-        });
-
-    server->on(
-        "/api/scan/start",
-        HTTP_GET,
-        [this](AsyncWebServerRequest *request)
-        {
-            startWifiScan();
-
-            request->send(
-                200,
-                "application/json",
-                "{\"status\":\"started\"}");
-        });
-
-    server->on(
-        "/api/connect",
-        HTTP_POST,
-        [](AsyncWebServerRequest *request) {},
-        nullptr,
-        [this](
-            AsyncWebServerRequest *request,
-            uint8_t *data,
-            size_t len,
-            size_t index,
-            size_t total)
-        {
-            JsonDocument doc;
-
-            auto err =
-                deserializeJson(
-                    doc,
-                    data,
-                    len);
-
-            if (err)
-            {
-                request->send(
-                    400,
-                    "application/json",
-                    "{\"error\":\"invalid json\"}");
+            if (err) {
+                request->send(400, "application/json", "{\"error\":\"invalid json\"}");
 
                 return;
             }
 
-            String ssid =
-                doc["ssid"] | "";
+            String ssid = doc["ssid"] | "";
 
-            String pass =
-                doc["password"] | "";
+            String pass = doc["password"] | "";
 
-            startWifiConnection(
-                ssid,
-                pass);
+            startWifiConnection(ssid, pass);
 
-            request->send(
-                200,
-                "application/json",
-                "{\"status\":\"connecting\"}");
+            request->send(200, "application/json", "{\"status\":\"connecting\"}");
         });
 }

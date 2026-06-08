@@ -1,15 +1,12 @@
 #pragma once
 
 #include <Arduino.h>
-#include <SPI.h>
 #include <MFRC522.h>
+#include <SPI.h>
 
-class RFIDCard
-{
+class RFIDCard {
 public:
-    RFIDCard(
-        uint8_t ssPin,
-        uint8_t rstPin);
+    RFIDCard(uint8_t ssPin, uint8_t rstPin);
 
     void begin();
 
@@ -17,16 +14,11 @@ public:
 
     String getUID();
 
-    bool authenticate(
-        uint8_t block);
+    bool authenticate(uint8_t block);
 
-    bool readBlock(
-        uint8_t block,
-        uint8_t *buffer);
+    bool readBlock(uint8_t block, uint8_t *buffer);
 
-    bool writeBlock(
-        uint8_t block,
-        const uint8_t *buffer);
+    bool writeBlock(uint8_t block, const uint8_t *buffer);
 
     void halt();
 

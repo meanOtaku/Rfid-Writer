@@ -1,32 +1,25 @@
 #pragma once
 
 #include <Arduino.h>
-#include <SPI.h>
-#include <MFRC522.h>
 #include <ESPAsyncWebServer.h>
+#include <MFRC522.h>
+#include <SPI.h>
 
 #include "rfid/rfid_card.h"
 
-class RFIDManager
-{
+class RFIDManager {
 public:
-    RFIDManager(
-        uint8_t ssPin,
-        uint8_t rstPin,
-        AsyncWebSocket *websocket);
+    RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebSocket *websocket);
 
     void begin();
 
     void update();
 
-    void setMode(
-        const String &mode);
+    void setMode(const String &mode);
 
-    void setBlock(
-        int block);
+    void setBlock(int block);
 
-    void setWriteData(
-        const String &data);
+    void setWriteData(const String &data);
 
 private:
     RFIDCard card;
@@ -41,8 +34,7 @@ private:
 
     String writeData;
 
-    void sendUID(
-        const String &uid);
+    void sendUID(const String &uid);
 
     String readBlock();
 
