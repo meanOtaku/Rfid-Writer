@@ -26,6 +26,8 @@ public:
 
     bool writeBlockRaw(uint8_t block, const uint8_t *buffer);
 
+    bool writePageRaw(uint8_t page, const uint8_t *buffer);
+
     bool selectCurrent();
 
     void stopCrypto();

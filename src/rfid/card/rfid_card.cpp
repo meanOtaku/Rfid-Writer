@@ -148,6 +148,30 @@ bool RFIDCard::writeBlockRaw(uint8_t block, const uint8_t *buffer) {
     return true;
 }
 
+bool RFIDCard::writePageRaw(uint8_t page, const uint8_t *buffer) {
+    MFRC522::StatusCode status;
+
+    status = rfid.MIFARE_Ultralight_Write(page, (uint8_t *)buffer, 4);
+
+    if (status != MFRC522::STATUS_OK) {
+        Serial.print("Write failed page ");
+
+        Serial.print(page);
+
+        Serial.print(": ");
+
+        Serial.println(rfid.GetStatusCodeName(status));
+
+        return false;
+    }
+
+    Serial.print("Write success page ");
+
+    Serial.println(page);
+
+    return true;
+}
+
 bool RFIDCard::selectCurrent() {
     return rfid.PICC_Select(&(rfid.uid)) == MFRC522::STATUS_OK;
 }

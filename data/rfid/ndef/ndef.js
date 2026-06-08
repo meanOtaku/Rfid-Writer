@@ -53,6 +53,10 @@ socket.onmessage = e => {
         rfidStatus.innerText = data.success
             ? "NDEF Write Successful"
             : "NDEF Write Failed: " + (data.error || "unknown");
+
+        document.getElementById("readResult").innerText = data.success
+            ? "Wrote NDEF message:\n" + (data.data || blockData.value)
+            : "Write failed: " + (data.error || "unknown");
     }
 
 };

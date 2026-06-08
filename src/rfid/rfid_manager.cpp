@@ -148,6 +148,7 @@ void RFIDManager::update() {
         doc["type"] = "rfid_write";
         doc["uid"] = uid;
         doc["cardType"] = cardType;
+        doc["data"] = writeData;
         doc["success"] = ok;
         if (!ok) {
             doc["error"] = errorMsg;

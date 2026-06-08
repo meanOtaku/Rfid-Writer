@@ -4,6 +4,8 @@
 
 namespace {
 constexpr size_t MAX_NDEF_STORAGE = 1024;
+constexpr size_t MAX_NDEF_MESSAGE = 900;
+constexpr size_t MAX_NDEF_TLV = 920;
 
 constexpr uint8_t DEFAULT_KEY_BYTES[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 constexpr uint8_t NDEF_KEY_BYTES[6] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
@@ -140,6 +142,191 @@ size_t readType2Storage(RFIDCard &card, uint8_t *storage, size_t storageSize) {
     }
 
     return offset;
+}
+
+bool readType2Capacity(RFIDCard &card, uint16_t *dataBytes, String &outError) {
+    uint8_t ccBuffer[18];
+
+    if (!card.readBlockRaw(3, ccBuffer)) {
+        outError = "Failed to read Type 2 capability data";
+        return false;
+    }
+
+    if (ccBuffer[0] != 0xE1) {
+        outError = "Tag is not formatted as an NDEF Type 2 tag";
+        return false;
+    }
+
+    if ((ccBuffer[3] & 0x0F) == 0x0F) {
+        outError = "NDEF tag is read-only";
+        return false;
+    }
+
+    *dataBytes = (uint16_t)ccBuffer[2] * 8;
+
+    if (*dataBytes == 0) {
+        outError = "Type 2 NDEF capacity is zero";
+        return false;
+    }
+
+    return true;
+}
+
+bool buildTextRecord(const String &text, uint8_t *message, size_t messageSize, size_t *messageLen, String &outError) {
+    size_t textLen = text.length();
+    size_t payloadLen = textLen + 3;
+
+    if (payloadLen > 255) {
+        outError = "NDEF text is too long for this writer";
+        return false;
+    }
+
+    size_t needed = 4 + payloadLen;
+
+    if (needed > messageSize) {
+        outError = "NDEF message is too large";
+        return false;
+    }
+
+    size_t index = 0;
+    message[index++] = 0xD1;
+    message[index++] = 0x01;
+    message[index++] = (uint8_t)payloadLen;
+    message[index++] = 'T';
+    message[index++] = 0x02;
+    message[index++] = 'e';
+    message[index++] = 'n';
+
+    for (size_t i = 0; i < textLen; i++) {
+        message[index++] = (uint8_t)text[i];
+    }
+
+    *messageLen = index;
+    return true;
+}
+
+bool buildNdefTlv(const String &text, uint8_t *tlv, size_t tlvSize, size_t *tlvLen, String &outError) {
+    uint8_t message[MAX_NDEF_MESSAGE];
+    size_t messageLen = 0;
+
+    if (!buildTextRecord(text, message, sizeof(message), &messageLen, outError)) {
+        return false;
+    }
+
+    size_t lengthBytes = messageLen < 0xFF ? 1 : 3;
+    size_t needed = 1 + lengthBytes + messageLen + 1;
+
+    if (needed > tlvSize) {
+        outError = "NDEF payload is too large";
+        return false;
+    }
+
+    size_t index = 0;
+    tlv[index++] = 0x03;
+
+    if (messageLen < 0xFF) {
+        tlv[index++] = (uint8_t)messageLen;
+    } else {
+        tlv[index++] = 0xFF;
+        tlv[index++] = (uint8_t)(messageLen >> 8);
+        tlv[index++] = (uint8_t)(messageLen & 0xFF);
+    }
+
+    memcpy(tlv + index, message, messageLen);
+    index += messageLen;
+    tlv[index++] = 0xFE;
+
+    *tlvLen = index;
+    return true;
+}
+
+bool writeType2Storage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen, String &outError) {
+    uint16_t dataBytes = 0;
+
+    if (!readType2Capacity(card, &dataBytes, outError)) {
+        return false;
+    }
+
+    if (tlvLen > dataBytes) {
+        outError = "NDEF message is larger than Type 2 tag capacity";
+        return false;
+    }
+
+    uint8_t pageBuffer[4];
+    uint16_t pageCount = (dataBytes + 3) / 4;
+    uint16_t requiredPages = (tlvLen + 3) / 4;
+
+    for (uint16_t pageOffset = 0; pageOffset < requiredPages; pageOffset++) {
+        memset(pageBuffer, 0, sizeof(pageBuffer));
+
+        for (uint8_t i = 0; i < 4; i++) {
+            size_t sourceIndex = (pageOffset * 4) + i;
+
+            if (sourceIndex < tlvLen) {
+                pageBuffer[i] = tlv[sourceIndex];
+            }
+        }
+
+        if (!card.writePageRaw(4 + pageOffset, pageBuffer)) {
+            outError = "Failed to write Type 2 NDEF page";
+            return false;
+        }
+    }
+
+    if (requiredPages < pageCount) {
+        memset(pageBuffer, 0, sizeof(pageBuffer));
+
+        if (!card.writePageRaw(4 + requiredPages, pageBuffer)) {
+            outError = "Failed to clear old Type 2 NDEF data";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool writeMifareClassicStorage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen, String &outError) {
+    size_t offset = 0;
+    uint8_t sectorCount = sectorCountForType(card.getType());
+
+    for (uint8_t sector = 1; sector < sectorCount; sector++) {
+        uint8_t firstBlock = firstBlockForSector(sector);
+        uint8_t trailerBlock = trailerBlockForSector(sector);
+
+        if (!authenticateNdefBlock(card, firstBlock)) {
+            card.stopCrypto();
+            card.selectCurrent();
+            continue;
+        }
+
+        for (uint8_t block = firstBlock; block < trailerBlock; block++) {
+            uint8_t blockBuffer[16];
+            memset(blockBuffer, 0, sizeof(blockBuffer));
+
+            for (uint8_t i = 0; i < 16; i++) {
+                if (offset < tlvLen) {
+                    blockBuffer[i] = tlv[offset++];
+                }
+            }
+
+            if (!card.writeBlockRaw(block, blockBuffer)) {
+                card.stopCrypto();
+                outError = "Failed to write MIFARE Classic NDEF block";
+                return false;
+            }
+
+            if (offset >= tlvLen) {
+                card.stopCrypto();
+                return true;
+            }
+        }
+
+        card.stopCrypto();
+        card.selectCurrent();
+    }
+
+    outError = "NDEF message is larger than writable MIFARE Classic space";
+    return false;
 }
 
 bool readTlvLength(const uint8_t *storage, size_t storageLen, size_t *index, size_t *length) {
@@ -438,16 +625,25 @@ bool NDEFManager::read(RFIDCard &card, String &outData, String &outError) {
 }
 
 bool NDEFManager::write(RFIDCard &card, const String &data, String &outError) {
-    // NDEF placeholder implementation.
-    // In a complete implementation, this would:
-    // 1. Construct an NDEF Text or URI record.
-    // 2. Write the NDEF TLV wrapper.
-    // 3. Store the message using the detected tag storage type.
+    uint8_t tlv[MAX_NDEF_TLV];
+    size_t tlvLen = 0;
 
-    Serial.print("NDEFManager::write stub called with data: ");
-    Serial.println(data);
+    if (!buildNdefTlv(data, tlv, sizeof(tlv), &tlvLen, outError)) {
+        return false;
+    }
 
-    return true;
+    MFRC522::PICC_Type cardType = card.getType();
+
+    if (cardType == MFRC522::PICC_TYPE_MIFARE_UL) {
+        return writeType2Storage(card, tlv, tlvLen, outError);
+    }
+
+    if (isMifareClassic(cardType)) {
+        return writeMifareClassicStorage(card, tlv, tlvLen, outError);
+    }
+
+    outError = "Unsupported card type for NDEF write";
+    return false;
 }
 
 bool NDEFManager::format(RFIDCard &card, String &outError) {
