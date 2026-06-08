@@ -32,6 +32,8 @@ void setupRFIDApi() {
 
             rfid.setMode(doc["mode"] | "read");
 
+            rfid.setFormat(doc["format"] | "raw");
+
             rfid.setBlock(doc["block"] | 4);
 
             rfid.setWriteData(doc["data"] | "");

@@ -14,13 +14,21 @@ public:
 
     String getUID();
 
-    bool authenticate(uint8_t block);
+    bool authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey = nullptr);
 
     bool readBlock(uint8_t block, uint8_t *buffer);
 
     bool writeBlock(uint8_t block, const uint8_t *buffer);
 
+    bool readBlockRaw(uint8_t block, uint8_t *buffer);
+
+    bool writeBlockRaw(uint8_t block, const uint8_t *buffer);
+
+    void stopCrypto();
+
     void halt();
+
+    MFRC522::PICC_Type getType();
 
 private:
     MFRC522 rfid;

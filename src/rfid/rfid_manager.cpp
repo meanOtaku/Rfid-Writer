@@ -1,5 +1,6 @@
 #include "rfid_manager.h"
 #include <ArduinoJson.h>
+#include "rfid/mifare/mifare_classic.h"
 
 RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebSocket *websocket) : card(ssPin, rstPin) {
     ws = websocket;
@@ -11,6 +12,8 @@ void RFIDManager::begin() {
 }
 
 void RFIDManager::setMode(const String &m) { mode = m; }
+
+void RFIDManager::setFormat(const String &f) { formatMode = f; }
 
 void RFIDManager::setBlock(int block) { blockNumber = block; }
 
@@ -47,14 +50,27 @@ void RFIDManager::update() {
 
     sendUID(uid);
 
+    String errorMsg = "";
+
     if (mode == "read") {
-        String data = readBlock();
+        String data = "";
+        bool ok = false;
+
+        if (formatMode == "ndef") {
+            ok = MifareClassic::readNDEF(card, data, errorMsg);
+        } else {
+            ok = MifareClassic::readRawBlock(card, blockNumber, data, errorMsg);
+        }
 
         JsonDocument doc;
 
         doc["type"] = "rfid_read";
         doc["uid"] = uid;
         doc["data"] = data;
+        doc["success"] = ok;
+        if (!ok) {
+            doc["error"] = errorMsg;
+        }
 
         String msg;
 
@@ -62,13 +78,22 @@ void RFIDManager::update() {
 
         ws->textAll(msg);
     } else {
-        bool ok = writeBlock();
+        bool ok = false;
+
+        if (formatMode == "ndef") {
+            ok = MifareClassic::writeNDEF(card, writeData, errorMsg);
+        } else {
+            ok = MifareClassic::writeRawBlock(card, blockNumber, writeData, errorMsg);
+        }
 
         JsonDocument doc;
 
         doc["type"] = "rfid_write";
         doc["uid"] = uid;
         doc["success"] = ok;
+        if (!ok) {
+            doc["error"] = errorMsg;
+        }
 
         String msg;
 
@@ -82,44 +107,4 @@ void RFIDManager::update() {
     delay(300);
 
     lastUID = "";
-}
-
-String RFIDManager::readBlock() {
-    uint8_t buffer[18];
-
-    if (!card.readBlock(blockNumber, buffer)) {
-        return "";
-    }
-
-    String text = "";
-
-    for (int i = 0; i < 16; i++) {
-        if (buffer[i] >= 32 && buffer[i] <= 126) {
-            text += (char)buffer[i];
-        }
-    }
-
-    return text;
-}
-
-bool RFIDManager::writeBlock() {
-    if ((blockNumber + 1) % 4 == 0) {
-        Serial.println("Refusing to write sector trailer");
-
-        return false;
-    }
-
-    uint8_t buffer[16];
-
-    memset(buffer, 0, sizeof(buffer));
-
-    size_t len = writeData.length();
-
-    if (len > 16) {
-        len = 16;
-    }
-
-    memcpy(buffer, writeData.c_str(), len);
-
-    return card.writeBlock(blockNumber, buffer);
 }

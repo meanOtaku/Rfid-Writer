@@ -58,6 +58,26 @@
 
         <div class="card">
 
+            <h2>Format</h2>
+
+            <label>
+                <input type="radio" name="rfidFormat" value="raw" checked>
+
+                Raw Block
+            </label>
+
+            <br><br>
+
+            <label>
+                <input type="radio" name="rfidFormat" value="ndef">
+
+                NDEF
+            </label>
+
+        </div>
+
+        <div id="blockEditorCard" class="card">
+
             <h2>Block Editor</h2>
 
             <input id="blockNumber" type="number" min="4" max="62" value="4">

@@ -17,6 +17,8 @@ public:
 
     void setMode(const String &mode);
 
+    void setFormat(const String &format);
+
     void setBlock(int block);
 
     void setWriteData(const String &data);
@@ -30,13 +32,11 @@ private:
 
     String mode = "read";
 
+    String formatMode = "raw";
+
     int blockNumber = 4;
 
     String writeData;
 
     void sendUID(const String &uid);
-
-    String readBlock();
-
-    bool writeBlock();
 };

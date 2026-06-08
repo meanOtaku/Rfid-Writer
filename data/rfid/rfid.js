@@ -21,8 +21,27 @@ function getRFIDMode()
     ).value;
 }
 
+function getRFIDFormat()
+{
+    return document.querySelector(
+        'input[name="rfidFormat"]:checked'
+    ).value;
+}
+
+function updateUI()
+{
+    const format = getRFIDFormat();
+    if (format === "ndef") {
+        blockNumber.style.display = "none";
+    } else {
+        blockNumber.style.display = "inline-block";
+    }
+}
+
 async function saveRFIDConfig()
 {
+    updateUI();
+
     await fetch(
         "/api/rfid/config",
         {
@@ -37,6 +56,9 @@ async function saveRFIDConfig()
                 {
                     mode:
                         getRFIDMode(),
+
+                    format:
+                        getRFIDFormat(),
 
                     block:
                         parseInt(
@@ -72,7 +94,9 @@ socket.onmessage = e =>
             data.uid;
 
         rfidStatus.innerText =
-            "Read Successful";
+            data.success !== false
+                ? "Read Successful"
+                : "Read Failed: " + (data.error || "unknown");
 
         blockData.value =
             data.data;
@@ -92,13 +116,23 @@ socket.onmessage = e =>
         rfidStatus.innerText =
             data.success
                 ? "Write Successful"
-                : "Write Failed";
+                : "Write Failed: " + (data.error || "unknown");
     }
 };
 
 document
     .querySelectorAll(
         'input[name="rfidMode"]')
+    .forEach(r =>
+    {
+        r.addEventListener(
+            "change",
+            saveRFIDConfig);
+    });
+
+document
+    .querySelectorAll(
+        'input[name="rfidFormat"]')
     .forEach(r =>
     {
         r.addEventListener(

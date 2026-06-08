@@ -52,10 +52,11 @@ String RFIDCard::getUID() {
     return uid;
 }
 
-bool RFIDCard::authenticate(uint8_t block) {
+bool RFIDCard::authenticate(uint8_t block, MFRC522::MIFARE_Key *customKey) {
     MFRC522::StatusCode status;
+    MFRC522::MIFARE_Key *authKey = customKey ? customKey : &key;
 
-    status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, &key, &(rfid.uid));
+    status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, authKey, &(rfid.uid));
 
     if (status != MFRC522::STATUS_OK) {
         Serial.print("Auth failed block ");
@@ -72,18 +73,12 @@ bool RFIDCard::authenticate(uint8_t block) {
     return true;
 }
 
-bool RFIDCard::readBlock(uint8_t block, uint8_t *buffer) {
-    if (!authenticate(block)) {
-        return false;
-    }
-
+bool RFIDCard::readBlockRaw(uint8_t block, uint8_t *buffer) {
     byte size = 18;
 
     MFRC522::StatusCode status;
 
     status = rfid.MIFARE_Read(block, buffer, &size);
-
-    rfid.PCD_StopCrypto1();
 
     if (status != MFRC522::STATUS_OK) {
         Serial.print("Read failed block ");
@@ -100,22 +95,10 @@ bool RFIDCard::readBlock(uint8_t block, uint8_t *buffer) {
     return true;
 }
 
-bool RFIDCard::writeBlock(uint8_t block, const uint8_t *buffer) {
-    if ((block + 1) % 4 == 0) {
-        Serial.println("Refusing to write sector trailer");
-
-        return false;
-    }
-
-    if (!authenticate(block)) {
-        return false;
-    }
-
+bool RFIDCard::writeBlockRaw(uint8_t block, const uint8_t *buffer) {
     MFRC522::StatusCode status;
 
     status = rfid.MIFARE_Write(block, (uint8_t *)buffer, 16);
-
-    rfid.PCD_StopCrypto1();
 
     if (status != MFRC522::STATUS_OK) {
         Serial.print("Write failed block ");
@@ -136,8 +119,46 @@ bool RFIDCard::writeBlock(uint8_t block, const uint8_t *buffer) {
     return true;
 }
 
+bool RFIDCard::readBlock(uint8_t block, uint8_t *buffer) {
+    if (!authenticate(block)) {
+        return false;
+    }
+
+    bool success = readBlockRaw(block, buffer);
+
+    stopCrypto();
+
+    return success;
+}
+
+bool RFIDCard::writeBlock(uint8_t block, const uint8_t *buffer) {
+    if ((block + 1) % 4 == 0) {
+        Serial.println("Refusing to write sector trailer");
+
+        return false;
+    }
+
+    if (!authenticate(block)) {
+        return false;
+    }
+
+    bool success = writeBlockRaw(block, buffer);
+
+    stopCrypto();
+
+    return success;
+}
+
+void RFIDCard::stopCrypto() {
+    rfid.PCD_StopCrypto1();
+}
+
 void RFIDCard::halt() {
     rfid.PICC_HaltA();
 
-    rfid.PCD_StopCrypto1();
+    stopCrypto();
+}
+
+MFRC522::PICC_Type RFIDCard::getType() {
+    return rfid.PICC_GetType(rfid.uid.sak);
 }
