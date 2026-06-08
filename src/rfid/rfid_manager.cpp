@@ -1,6 +1,7 @@
 #include "rfid_manager.h"
 #include <ArduinoJson.h>
 #include "rfid/mifare/mifare_classic.h"
+#include "rfid/ndef/ndef_manager.h"
 
 RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *srv, AsyncWebSocket *websocket)
     : card(ssPin, rstPin) {
@@ -86,7 +87,7 @@ void RFIDManager::update() {
     String errorMsg = "";
 
     if (pendingFormat) {
-        bool ok = MifareClassic::formatNDEF(card, errorMsg);
+        bool ok = NDEFManager::format(card, errorMsg);
         pendingFormat = false;
 
         JsonDocument doc;
@@ -108,7 +109,7 @@ void RFIDManager::update() {
         bool ok = false;
 
         if (formatMode == "ndef") {
-            ok = MifareClassic::readNDEF(card, data, errorMsg);
+            ok = NDEFManager::read(card, data, errorMsg);
         } else {
             ok = MifareClassic::readRawBlock(card, blockNumber, data, errorMsg);
         }
@@ -132,7 +133,7 @@ void RFIDManager::update() {
         bool ok = false;
 
         if (formatMode == "ndef") {
-            ok = MifareClassic::writeNDEF(card, writeData, errorMsg);
+            ok = NDEFManager::write(card, writeData, errorMsg);
         } else {
             ok = MifareClassic::writeRawBlock(card, blockNumber, writeData, errorMsg);
         }
