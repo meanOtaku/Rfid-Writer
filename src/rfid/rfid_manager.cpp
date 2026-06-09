@@ -163,7 +163,7 @@ void RFIDManager::update() {
 
     card.halt();
 
-    delay(300);
+    delay(100);
 
     lastUID = "";
 }

@@ -11,6 +11,12 @@ constexpr uint8_t DEFAULT_KEY_BYTES[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 constexpr uint8_t NDEF_KEY_BYTES[6] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
 constexpr uint8_t MAD_KEY_BYTES[6] = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5};
 
+enum class TlvSearchStatus {
+    NotFound,
+    NeedMoreData,
+    Found,
+};
+
 MFRC522::MIFARE_Key makeKey(const uint8_t keyBytes[6]) {
     MFRC522::MIFARE_Key key;
 
@@ -86,6 +92,69 @@ bool authenticateNdefBlock(RFIDCard &card, uint8_t block) {
     return false;
 }
 
+bool readTlvLength(const uint8_t *storage, size_t storageLen, size_t *index, size_t *length, bool *needMore) {
+    *needMore = false;
+
+    if (*index >= storageLen) {
+        *needMore = true;
+        return false;
+    }
+
+    *length = storage[(*index)++];
+
+    if (*length == 0xFF) {
+        if (*index + 2 > storageLen) {
+            *needMore = true;
+            return false;
+        }
+
+        *length = ((size_t)storage[*index] << 8) | storage[*index + 1];
+        *index += 2;
+    }
+
+    return true;
+}
+
+TlvSearchStatus findCompleteNdefMessage(const uint8_t *storage, size_t storageLen, const uint8_t **message,
+                                        size_t *messageLen) {
+    bool sawIncompleteNdef = false;
+
+    for (size_t start = 0; start < storageLen; start++) {
+        size_t index = start;
+        uint8_t type = storage[index++];
+
+        if (type == 0x00 || type == 0xFE) {
+            continue;
+        }
+
+        size_t len = 0;
+        bool needMore = false;
+
+        if (!readTlvLength(storage, storageLen, &index, &len, &needMore)) {
+            if (type == 0x03 && needMore) {
+                sawIncompleteNdef = true;
+            }
+
+            continue;
+        }
+
+        if (type != 0x03) {
+            continue;
+        }
+
+        if (index + len > storageLen) {
+            sawIncompleteNdef = true;
+            continue;
+        }
+
+        *message = storage + index;
+        *messageLen = len;
+        return TlvSearchStatus::Found;
+    }
+
+    return sawIncompleteNdef ? TlvSearchStatus::NeedMoreData : TlvSearchStatus::NotFound;
+}
+
 size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storageSize) {
     size_t offset = 0;
     uint8_t sectorCount = sectorCountForType(card.getType());
@@ -108,6 +177,14 @@ size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storage
 
             if (card.readBlockRaw(block, storage + offset)) {
                 offset += 16;
+
+                const uint8_t *message = nullptr;
+                size_t messageLen = 0;
+
+                if (findCompleteNdefMessage(storage, offset, &message, &messageLen) == TlvSearchStatus::Found) {
+                    card.stopCrypto();
+                    return offset;
+                }
             } else {
                 break;
             }
@@ -139,6 +216,13 @@ size_t readType2Storage(RFIDCard &card, uint8_t *storage, size_t storageSize) {
         }
 
         offset += 16;
+
+        const uint8_t *message = nullptr;
+        size_t messageLen = 0;
+
+        if (findCompleteNdefMessage(storage, offset, &message, &messageLen) == TlvSearchStatus::Found) {
+            return offset;
+        }
     }
 
     return offset;
@@ -329,56 +413,15 @@ bool writeMifareClassicStorage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen
     return false;
 }
 
-bool readTlvLength(const uint8_t *storage, size_t storageLen, size_t *index, size_t *length) {
-    if (*index >= storageLen) {
-        return false;
-    }
-
-    *length = storage[(*index)++];
-
-    if (*length == 0xFF) {
-        if (*index + 2 > storageLen) {
-            return false;
-        }
-
-        *length = ((size_t)storage[*index] << 8) | storage[*index + 1];
-        *index += 2;
-    }
-
-    return true;
-}
-
 bool findNdefMessage(const uint8_t *storage, size_t storageLen, const uint8_t **message, size_t *messageLen,
                      String &outError) {
-    for (size_t start = 0; start < storageLen; start++) {
-        size_t index = start;
-        uint8_t type = storage[index++];
+    TlvSearchStatus status = findCompleteNdefMessage(storage, storageLen, message, messageLen);
 
-        if (type == 0x00) {
-            continue;
-        }
-
-        if (type == 0xFE) {
-            continue;
-        }
-
-        size_t len = 0;
-        if (!readTlvLength(storage, storageLen, &index, &len)) {
-            continue;
-        }
-
-        if (index + len > storageLen) {
-            continue;
-        }
-
-        if (type == 0x03) {
-            *message = storage + index;
-            *messageLen = len;
-            return true;
-        }
+    if (status == TlvSearchStatus::Found) {
+        return true;
     }
 
-    outError = "No NDEF message found";
+    outError = status == TlvSearchStatus::NeedMoreData ? "NDEF message is incomplete" : "No NDEF message found";
     return false;
 }
 
