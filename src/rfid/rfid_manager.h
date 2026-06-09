@@ -31,6 +31,10 @@ private:
 
     bool pendingFormat = false;
 
+    bool waitingForTagRemoval = false;
+
+    uint8_t tagMissingChecks = 0;
+
     int blockNumber = 4;
 
     String writeData;
@@ -46,4 +50,6 @@ private:
     void triggerFormat();
 
     void sendUID(const String &uid);
+
+    void sendRemoved();
 };

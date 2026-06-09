@@ -67,7 +67,37 @@ void RFIDManager::sendUID(const String &uid) {
     ws->textAll(msg);
 }
 
+void RFIDManager::sendRemoved() {
+    JsonDocument doc;
+
+    doc["type"] = "rfid_removed";
+
+    String msg;
+
+    serializeJson(doc, msg);
+
+    ws->textAll(msg);
+}
+
 void RFIDManager::update() {
+    if (waitingForTagRemoval) {
+        if (!card.cardPresent()) {
+            tagMissingChecks++;
+
+            if (tagMissingChecks >= 3) {
+                waitingForTagRemoval = false;
+                tagMissingChecks = 0;
+                lastUID = "";
+                sendRemoved();
+            }
+        } else {
+            tagMissingChecks = 0;
+            card.stopCrypto();
+        }
+
+        return;
+    }
+
     if (!card.cardPresent()) {
         return;
     }
@@ -161,9 +191,10 @@ void RFIDManager::update() {
         ws->textAll(msg);
     }
 
-    card.halt();
+    card.stopCrypto();
 
     delay(100);
 
-    lastUID = "";
+    tagMissingChecks = 0;
+    waitingForTagRemoval = true;
 }

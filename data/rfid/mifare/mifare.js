@@ -47,6 +47,16 @@ socket.onmessage = e => {
             ? "Write Successful"
             : "Write Failed: " + (data.error || "unknown");
     }
+
+    if (data.type === "rfid_removed") {
+        rfidUid.innerText = "No Card";
+        rfidStatus.innerText = "Waiting for card...";
+        document.getElementById("readResult").innerText = "No data read yet";
+
+        if (getRFIDMode() === "read") {
+            blockData.value = "";
+        }
+    }
 };
 
 document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
