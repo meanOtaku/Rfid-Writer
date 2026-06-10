@@ -5,11 +5,13 @@
 #include <MFRC522.h>
 #include <SPI.h>
 
+#include "led/status_led.h"
 #include "rfid/card/rfid_card.h"
 
 class RFIDManager {
 public:
-    RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *server, AsyncWebSocket *websocket);
+    RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *server, AsyncWebSocket *websocket,
+                StatusLED *statusLED = nullptr);
 
     void begin();
 
@@ -22,6 +24,7 @@ private:
 
     AsyncWebServer *server;
     AsyncWebSocket *ws;
+    StatusLED *statusLED;
 
     String lastUID = "";
 

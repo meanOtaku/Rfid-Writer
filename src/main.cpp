@@ -2,18 +2,25 @@
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
 
+#include "led/status_led.h"
 #include "rfid/rfid_manager.h"
 #include "wifi/wifi_manager.h"
+
+constexpr uint8_t YELLOW_LED_PIN = 25;
+constexpr uint8_t RED_LED_PIN = 26;
+constexpr uint8_t GREEN_LED_PIN = 27;
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 WiFiManager wifi(&server, &ws);
+StatusLED statusLED(YELLOW_LED_PIN, RED_LED_PIN, GREEN_LED_PIN);
 
 RFIDManager rfid(5,  // SS
                  22, // RST
                  &server,
-                 &ws);
+                 &ws,
+                 &statusLED);
 
 void setup() {
     Serial.begin(115200);
@@ -27,6 +34,8 @@ void setup() {
     }
 
     wifi.begin();
+
+    statusLED.begin();
 
     rfid.begin();
 

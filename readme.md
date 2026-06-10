@@ -19,6 +19,7 @@ The ESP32 starts its own WiFi access point and also supports connecting to a hom
 
 - ESP32 development board
 - MFRC522 / RC522 RFID reader
+- Yellow, red, and green status LEDs with suitable resistors
 - MIFARE Classic or NDEF-compatible NFC tags
 
 Default RC522 wiring used by the firmware:
@@ -34,6 +35,16 @@ Default RC522 wiring used by the firmware:
 | GND | GND |
 
 Use 3.3V only. Do not power the RC522 from 5V.
+
+Default status LED wiring:
+
+| LED | ESP32 |
+| --- | --- |
+| Yellow, no card | GPIO 25 |
+| Red, card/read/write error | GPIO 26 |
+| Green, successful card read/write | GPIO 27 |
+
+Each LED should be wired with a suitable current-limiting resistor.
 
 ## Web Access
 

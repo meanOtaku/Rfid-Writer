@@ -3,15 +3,21 @@
 #include "rfid/mifare/mifare_classic.h"
 #include "rfid/ndef/ndef_manager.h"
 
-RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *srv, AsyncWebSocket *websocket)
+RFIDManager::RFIDManager(uint8_t ssPin, uint8_t rstPin, AsyncWebServer *srv, AsyncWebSocket *websocket,
+                         StatusLED *led)
     : card(ssPin, rstPin) {
     server = srv;
     ws = websocket;
+    statusLED = led;
 }
 
 void RFIDManager::begin() {
     Serial.println("RFID Ready");
     card.begin();
+
+    if (statusLED) {
+        statusLED->set(LEDStatus::Idle);
+    }
 }
 
 void RFIDManager::setMode(const String &m) { mode = m; }
@@ -89,6 +95,9 @@ void RFIDManager::update() {
                 tagMissingChecks = 0;
                 lastUID = "";
                 sendRemoved();
+                if (statusLED) {
+                    statusLED->set(LEDStatus::Idle);
+                }
             }
         } else {
             tagMissingChecks = 0;
@@ -123,6 +132,10 @@ void RFIDManager::update() {
         bool ok = NDEFManager::format(card, errorMsg);
         pendingFormat = false;
 
+        if (statusLED) {
+            statusLED->set(ok ? LEDStatus::Success : LEDStatus::Error);
+        }
+
         JsonDocument doc;
 
         doc["type"] = "rfid_format";
@@ -148,6 +161,10 @@ void RFIDManager::update() {
             ok = MifareClassic::readRawBlock(card, blockNumber, data, errorMsg);
         }
 
+        if (statusLED) {
+            statusLED->set(ok ? LEDStatus::Success : LEDStatus::Error);
+        }
+
         JsonDocument doc;
 
         doc["type"] = "rfid_read";
@@ -171,6 +188,10 @@ void RFIDManager::update() {
             ok = NDEFManager::write(card, writeData, errorMsg);
         } else {
             ok = MifareClassic::writeRawBlock(card, blockNumber, writeData, errorMsg);
+        }
+
+        if (statusLED) {
+            statusLED->set(ok ? LEDStatus::Success : LEDStatus::Error);
         }
 
         JsonDocument doc;
