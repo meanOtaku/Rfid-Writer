@@ -12,25 +12,77 @@
 
         <h1>RFID Manager</h1>
 
-        <div class="card">
+        <div class="toolGrid">
 
-            <h2>Navigation</h2>
+            <div>
 
-            <a class="navButton" href="wifi/wifi.html">
-                WiFi Configuration
-            </a>
-            <br><br>
-            <a class="navButton" href="rfid/mifare/mifare.html">
-                Mifare Classic Tools
-            </a>
-            <br><br>
-            <a class="navButton" href="rfid/ndef/ndef.html">
-                NDEF Tools
-            </a>
+                <div class="card">
+
+                    <h2>Auto Reader</h2>
+
+                    <p>
+                        UID:
+                        <span id="rfidUid">
+                            No Card
+                        </span>
+                    </p>
+
+                    <p>
+                        Card:
+                        <span id="cardType">
+                            Unknown
+                        </span>
+                    </p>
+
+                    <p>
+                        Data:
+                        <span id="dataType">
+                            Auto
+                        </span>
+                    </p>
+
+                    <p>
+                        Status:
+                        <span id="rfidStatus">
+                            Waiting for card...
+                        </span>
+                    </p>
+
+                </div>
+
+                <div class="card">
+
+                    <h2>Navigation</h2>
+
+                    <a class="navButton" href="wifi/wifi.html">
+                        WiFi Configuration
+                    </a>
+                    <br><br>
+                    <a class="navButton" href="rfid/mifare/mifare.html">
+                        Mifare Classic Tools
+                    </a>
+                    <br><br>
+                    <a class="navButton" href="rfid/ndef/ndef.html">
+                        NDEF Tools
+                    </a>
+
+                </div>
+
+            </div>
+
+            <div class="card resultCard">
+
+                <h2>Read Result</h2>
+
+                <pre id="readResult">No data read yet</pre>
+
+            </div>
 
         </div>
 
     </div>
+
+    <script src="home.js"></script>
 
 </body>
 

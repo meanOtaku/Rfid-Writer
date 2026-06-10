@@ -64,6 +64,19 @@ uint8_t trailerBlockForSector(uint8_t sector) {
     return firstBlockForSector(sector) + 15;
 }
 
+bool resetMifareSession(RFIDCard &card) {
+    card.stopCrypto();
+    delay(5);
+
+    if (card.wakeAndSelect()) {
+        return true;
+    }
+
+    card.resetReader();
+    delay(10);
+    return card.wakeAndSelect();
+}
+
 bool authenticateNdefBlock(RFIDCard &card, uint8_t block) {
     MFRC522::MIFARE_Key keys[] = {
         makeKey(NDEF_KEY_BYTES),
@@ -72,21 +85,19 @@ bool authenticateNdefBlock(RFIDCard &card, uint8_t block) {
     };
 
     for (MFRC522::MIFARE_Key &key : keys) {
-        card.stopCrypto();
+        resetMifareSession(card);
 
         if (card.authenticate(block, &key, false)) {
             return true;
         }
 
-        card.stopCrypto();
-        card.selectCurrent();
+        resetMifareSession(card);
 
         if (card.authenticateKeyB(block, &key, false)) {
             return true;
         }
 
-        card.stopCrypto();
-        card.selectCurrent();
+        resetMifareSession(card);
     }
 
     return false;
@@ -164,11 +175,7 @@ size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storage
         uint8_t trailerBlock = trailerBlockForSector(sector);
 
         if (!authenticateNdefBlock(card, firstBlock)) {
-            card.stopCrypto();
-            card.selectCurrent();
-            if (sector == 1) {
-                return offset;
-            }
+            resetMifareSession(card);
             continue;
         }
 
@@ -193,14 +200,13 @@ size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storage
             }
         }
 
-        card.stopCrypto();
-        card.selectCurrent();
+        resetMifareSession(card);
 
         const uint8_t *message = nullptr;
         size_t messageLen = 0;
         TlvSearchStatus status = findCompleteNdefMessage(storage, offset, &message, &messageLen);
 
-        if (status == TlvSearchStatus::NotFound) {
+        if (status == TlvSearchStatus::Found) {
             return offset;
         }
     }
@@ -389,8 +395,7 @@ bool writeMifareClassicStorage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen
         uint8_t trailerBlock = trailerBlockForSector(sector);
 
         if (!authenticateNdefBlock(card, firstBlock)) {
-            card.stopCrypto();
-            card.selectCurrent();
+            resetMifareSession(card);
             continue;
         }
 
@@ -416,8 +421,7 @@ bool writeMifareClassicStorage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen
             }
         }
 
-        card.stopCrypto();
-        card.selectCurrent();
+        resetMifareSession(card);
     }
 
     outError = "NDEF message is larger than writable MIFARE Classic space";

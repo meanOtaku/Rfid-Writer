@@ -30,6 +30,10 @@ public:
 
     bool selectCurrent();
 
+    bool wakeAndSelect();
+
+    void resetReader();
+
     void stopCrypto();
 
     void halt();

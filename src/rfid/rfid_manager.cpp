@@ -1,5 +1,6 @@
 #include "rfid_manager.h"
 #include <ArduinoJson.h>
+#include "rfid/auto/auto_reader.h"
 #include "rfid/mifare/mifare_classic.h"
 #include "rfid/ndef/ndef_manager.h"
 
@@ -153,12 +154,24 @@ void RFIDManager::update() {
         ws->textAll(msg);
     } else if (mode == "read") {
         String data = "";
+        String readFormat = formatMode;
         bool ok = false;
 
-        if (formatMode == "ndef") {
+        if (formatMode == "auto") {
+            AutoReadResult result;
+
+            ok = AutoReader::read(card, result, errorMsg);
+            readFormat = result.format;
+            data = result.data;
+
+            if (readFormat.length() == 0) {
+                readFormat = "auto";
+            }
+        } else if (formatMode == "ndef") {
             ok = NDEFManager::read(card, data, errorMsg);
         } else {
             ok = MifareClassic::readRawBlock(card, blockNumber, data, errorMsg);
+            readFormat = "raw";
         }
 
         if (statusLED) {
@@ -170,6 +183,7 @@ void RFIDManager::update() {
         doc["type"] = "rfid_read";
         doc["uid"] = uid;
         doc["cardType"] = cardType;
+        doc["format"] = readFormat;
         doc["data"] = data;
         doc["success"] = ok;
         if (!ok) {

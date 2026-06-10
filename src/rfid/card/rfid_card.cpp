@@ -190,6 +190,25 @@ bool RFIDCard::selectCurrent() {
     return rfid.PICC_Select(&(rfid.uid)) == MFRC522::STATUS_OK;
 }
 
+bool RFIDCard::wakeAndSelect() {
+    byte atqa[2];
+    byte atqaSize = sizeof(atqa);
+
+    stopCrypto();
+
+    if (rfid.PICC_WakeupA(atqa, &atqaSize) != MFRC522::STATUS_OK) {
+        return false;
+    }
+
+    return selectCurrent();
+}
+
+void RFIDCard::resetReader() {
+    stopCrypto();
+    rfid.PCD_Init();
+    delay(5);
+}
+
 bool RFIDCard::readBlock(uint8_t block, uint8_t *buffer) {
     if (!authenticate(block)) {
         return false;
