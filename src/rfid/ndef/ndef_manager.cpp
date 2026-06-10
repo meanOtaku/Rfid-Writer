@@ -166,6 +166,9 @@ size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storage
         if (!authenticateNdefBlock(card, firstBlock)) {
             card.stopCrypto();
             card.selectCurrent();
+            if (sector == 1) {
+                return offset;
+            }
             continue;
         }
 
@@ -192,6 +195,14 @@ size_t readMifareClassicStorage(RFIDCard &card, uint8_t *storage, size_t storage
 
         card.stopCrypto();
         card.selectCurrent();
+
+        const uint8_t *message = nullptr;
+        size_t messageLen = 0;
+        TlvSearchStatus status = findCompleteNdefMessage(storage, offset, &message, &messageLen);
+
+        if (status == TlvSearchStatus::NotFound) {
+            return offset;
+        }
     }
 
     return offset;

@@ -21,15 +21,29 @@ void RFIDCard::begin() {
 }
 
 bool RFIDCard::cardPresent() {
-    if (!rfid.PICC_IsNewCardPresent()) {
-        return false;
+    for (uint8_t attempt = 0; attempt < 3; attempt++) {
+        if (!rfid.PICC_IsNewCardPresent()) {
+            delay(15);
+            continue;
+        }
+
+        if (!rfid.PICC_ReadCardSerial()) {
+            delay(15);
+            continue;
+        }
+
+        MFRC522::PICC_Type type = getType();
+
+        if (rfid.uid.size > 0 && type != MFRC522::PICC_TYPE_UNKNOWN && type != MFRC522::PICC_TYPE_NOT_COMPLETE) {
+            return true;
+        }
+
+        rfid.PICC_HaltA();
+        stopCrypto();
+        delay(15);
     }
 
-    if (!rfid.PICC_ReadCardSerial()) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 String RFIDCard::getUID() {
