@@ -21,6 +21,21 @@ button {
     padding: 10px;
 }
 
+.hidden {
+    display: none;
+}
+
+.fieldLabel {
+    display: block;
+    margin: 8px 0 0;
+}
+
+[data-form-fields] {
+    max-height: 220px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
 select,
 input:not([type="radio"]),
 textarea {
@@ -43,6 +58,22 @@ label {
 
 h1 {
     margin: 4px 0 10px;
+}
+
+.networkBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #d7dce2;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.networkBar span {
+    white-space: nowrap;
 }
 
 h2 {

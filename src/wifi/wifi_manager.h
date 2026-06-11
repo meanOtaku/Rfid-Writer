@@ -47,4 +47,6 @@ private:
     void setupWebSocket();
 
     void clearWifiCredentials();
+
+    void ensureAccessPoint();
 };

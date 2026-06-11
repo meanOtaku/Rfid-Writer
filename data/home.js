@@ -54,6 +54,8 @@ socket.onopen = saveRFIDConfig;
 socket.onmessage = e => {
     let data = JSON.parse(e.data);
 
+    updateNetworkStatus(data);
+
     if (data.type === "rfid") {
         rfidUid.innerText = data.uid;
         cardType.innerText = data.cardType || "Unknown";

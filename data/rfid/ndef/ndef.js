@@ -1,9 +1,27 @@
 const rfidUid = document.getElementById("rfidUid");
 const rfidStatus = document.getElementById("rfidStatus");
 const blockData = document.getElementById("blockData");
+const formPayload = document.getElementById("formPayload");
+const messageEditor = document.getElementById("messageEditor");
+const formWriter = document.getElementById("formWriter");
 
 function getRFIDMode() {
     return document.querySelector('input[name="rfidMode"]:checked').value;
+}
+
+function getWriteSource() {
+    return document.querySelector('input[name="writeSource"]:checked').value;
+}
+
+function getWriteData() {
+    return getWriteSource() === "form" ? formPayload.value : blockData.value;
+}
+
+function updateWriteSourceUI() {
+    const useForm = getWriteSource() === "form";
+
+    messageEditor.classList.toggle("hidden", useForm);
+    formWriter.classList.toggle("hidden", !useForm);
 }
 
 async function saveRFIDConfig() {
@@ -16,7 +34,7 @@ async function saveRFIDConfig() {
             mode: getRFIDMode(),
             format: "ndef",
             block: 4, // Dummy block, ignored in NDEF mode
-            data: blockData.value
+            data: getWriteData()
         })
     });
 }
@@ -25,6 +43,8 @@ let socket = new WebSocket(`ws://${location.host}/ws`);
 
 socket.onmessage = e => {
     let data = JSON.parse(e.data);
+
+    updateNetworkStatus(data);
 
     if (data.type === "rfid") {
         rfidUid.innerText = data.uid;
@@ -55,7 +75,7 @@ socket.onmessage = e => {
             : "NDEF Write Failed: " + (data.error || "unknown");
 
         document.getElementById("readResult").innerText = data.success
-            ? "Wrote NDEF message:\n" + (data.data || blockData.value)
+            ? "Wrote NDEF message:\n" + (data.data || getWriteData())
             : "Write failed: " + (data.error || "unknown");
     }
 
@@ -75,6 +95,28 @@ document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
     r.addEventListener("change", saveRFIDConfig);
 });
 
+document.querySelectorAll('input[name="writeSource"]').forEach(r => {
+    r.addEventListener("change", () => {
+        updateWriteSourceUI();
+        saveRFIDConfig();
+    });
+});
+
 blockData.addEventListener("input", saveRFIDConfig);
 
+createFormWriter({
+    rootId: "formWriter",
+    outputId: "formPayload",
+    onPayloadChange: payload => {
+        if (payload.length > 0) {
+            document.querySelector('input[name="writeSource"][value="form"]').checked = true;
+            document.querySelector('input[name="rfidMode"][value="write"]').checked = true;
+        }
+
+        updateWriteSourceUI();
+        saveRFIDConfig();
+    }
+});
+
+updateWriteSourceUI();
 saveRFIDConfig();

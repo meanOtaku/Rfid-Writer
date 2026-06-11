@@ -20,6 +20,22 @@ button {
     padding: 10px;
 }
 
+.networkBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #d7dce2;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.networkBar span {
+    white-space: nowrap;
+}
+
 select,
 input {
     width: 100%;

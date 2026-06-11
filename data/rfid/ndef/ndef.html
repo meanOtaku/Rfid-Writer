@@ -12,6 +12,21 @@
 
         <h1>NDEF Tools</h1>
 
+        <div class="networkBar">
+            <span>
+                AP:
+                <strong id="networkApIp">Loading...</strong>
+            </span>
+            <span>
+                WiFi:
+                <strong id="networkStaIp">Loading...</strong>
+            </span>
+            <span>
+                Network:
+                <strong id="networkStaName">Loading...</strong>
+            </span>
+        </div>
+
         <a class="navButton" href="../../index.html">
             Home
         </a>
@@ -62,9 +77,55 @@
 
                 <div class="card">
 
+                    <h2>Write Source</h2>
+
+                    <label>
+                        <input type="radio" name="writeSource" value="message" checked>
+
+                        Message Editor
+                    </label>
+
+                    <br>
+
+                    <label>
+                        <input type="radio" name="writeSource" value="form">
+
+                        Google Form
+                    </label>
+
+                </div>
+
+                <div class="card" id="messageEditor">
+
                     <h2>NDEF Message Editor</h2>
 
                     <textarea id="blockData" rows="6" placeholder="Enter NDEF text message to write"></textarea>
+
+                </div>
+
+                <div class="card" id="formWriter">
+
+                    <h2>Google Form Writer</h2>
+
+                    <input id="formPayload" type="hidden">
+
+                    <input type="url" data-form-url placeholder="Paste Google Form link">
+
+                    <button type="button" data-load-form>
+                        Load Form
+                    </button>
+
+                    <p data-form-status>
+                        Enter a Google Form link
+                    </p>
+
+                    <div data-form-fields></div>
+
+                    <input type="text" data-manual-field placeholder="Add field manually">
+
+                    <button type="button" data-add-field>
+                        Add Field
+                    </button>
 
                 </div>
 
@@ -82,6 +143,8 @@
 
     </div>
 
+    <script src="../../network_status.js"></script>
+    <script src="../form_writer.js"></script>
     <script src="ndef.js"></script>
 
 </body>

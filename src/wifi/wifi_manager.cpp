@@ -12,15 +12,9 @@ void WiFiManager::begin() {
     prefs.begin("wifi", false);
 
     WiFi.mode(WIFI_AP_STA);
+    WiFi.setSleep(false);
 
-    WiFi.softAP(AP_SSID, AP_PASS);
-
-    Serial.println();
-    Serial.println("Access Point Started");
-
-    Serial.print("AP IP: ");
-
-    Serial.println(WiFi.softAPIP());
+    ensureAccessPoint();
 
     WiFi.onEvent([this](arduino_event_id_t event, arduino_event_info_t info) {
         switch (event) {
@@ -29,6 +23,8 @@ void WiFiManager::begin() {
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+            ensureAccessPoint();
+
             wifiConnected = true;
             wifiConnecting = false;
 
@@ -68,9 +64,9 @@ void WiFiManager::begin() {
 
                 clearWifiCredentials();
 
-                WiFi.disconnect(true);
-
-                WiFi.mode(WIFI_AP);
+                WiFi.disconnect(false, false);
+                WiFi.mode(WIFI_AP_STA);
+                ensureAccessPoint();
             }
 
             broadcastStatus();
@@ -96,8 +92,11 @@ void WiFiManager::broadcastStatus() {
 
     doc["ssid"] = connectedSSID;
 
+    doc["ap_ip"] = WiFi.softAPIP().toString();
+
     if (wifiConnected) {
         doc["ip"] = WiFi.localIP().toString();
+        doc["sta_ip"] = WiFi.localIP().toString();
     }
 
     String msg;
@@ -115,6 +114,9 @@ void WiFiManager::saveWifiCredentials(const String &ssid, const String &password
 
 void WiFiManager::startWifiConnection(const String &ssid, const String &password) {
     Serial.printf("Connecting to %s\n", ssid.c_str());
+
+    WiFi.mode(WIFI_AP_STA);
+    ensureAccessPoint();
 
     saveWifiCredentials(ssid, password);
 
@@ -143,6 +145,9 @@ void WiFiManager::startWifiScan() {
     if (scanInProgress) {
         return;
     }
+
+    WiFi.mode(WIFI_AP_STA);
+    ensureAccessPoint();
 
     Serial.println("Starting WiFi scan");
 
@@ -219,7 +224,10 @@ void WiFiManager::setupWebSocket() {
 
             if (wifiConnected) {
                 doc["ip"] = WiFi.localIP().toString();
+                doc["sta_ip"] = WiFi.localIP().toString();
             }
+
+            doc["ap_ip"] = WiFi.softAPIP().toString();
 
             String msg;
 
@@ -292,4 +300,21 @@ void WiFiManager::clearWifiCredentials() {
     reconnectAttempts = 0;
 
     Serial.println("WiFi credentials cleared");
+}
+
+void WiFiManager::ensureAccessPoint() {
+    if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+        WiFi.mode(WIFI_AP_STA);
+    }
+
+    if (WiFi.softAPIP().toString() == "0.0.0.0") {
+        WiFi.softAP(AP_SSID, AP_PASS);
+
+        Serial.println();
+        Serial.println("Access Point Started");
+
+        Serial.print("AP IP: ");
+
+        Serial.println(WiFi.softAPIP());
+    }
 }

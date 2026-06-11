@@ -53,6 +53,8 @@ socket.onmessage = e => {
     let data =
         JSON.parse(e.data);
 
+    updateNetworkStatus(data);
+
     if (data.type === "scan_results") {
         networkSelect.innerHTML = "";
         if (data.networks.length === 0) {

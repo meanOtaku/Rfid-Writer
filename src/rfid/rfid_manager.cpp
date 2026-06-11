@@ -152,6 +152,31 @@ void RFIDManager::update() {
         serializeJson(doc, msg);
 
         ws->textAll(msg);
+    } else if (mode == "convert_ndef_to_mifare") {
+        String data = "";
+        bool ok = MifareClassic::convertNdefToClassic(card, data, errorMsg);
+
+        if (statusLED) {
+            statusLED->set(ok ? LEDStatus::Success : LEDStatus::Error);
+        }
+
+        JsonDocument doc;
+
+        doc["type"] = "rfid_convert";
+        doc["uid"] = uid;
+        doc["cardType"] = cardType;
+        doc["format"] = "mifare";
+        doc["data"] = data;
+        doc["success"] = ok;
+        if (!ok) {
+            doc["error"] = errorMsg;
+        }
+
+        String msg;
+
+        serializeJson(doc, msg);
+
+        ws->textAll(msg);
     } else if (mode == "read") {
         String data = "";
         String readFormat = formatMode;
