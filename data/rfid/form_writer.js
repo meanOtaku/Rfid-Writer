@@ -222,6 +222,25 @@ function createFormWriter(options) {
         }
     }
 
+    function resetForm() {
+        const urlInput = root.querySelector("[data-form-url]");
+        const labelInput = root.querySelector("[data-manual-field]");
+
+        fields = [];
+
+        if (urlInput) {
+            urlInput.value = "";
+        }
+
+        if (labelInput) {
+            labelInput.value = "";
+        }
+
+        renderFields();
+        setStatus("Enter a Google Form link");
+        updatePayload();
+    }
+
     function addManualField() {
         const labelInput = root.querySelector("[data-manual-field]");
         const label = labelInput.value.trim();
@@ -244,5 +263,11 @@ function createFormWriter(options) {
 
     root.querySelector("[data-load-form]").addEventListener("click", loadForm);
     root.querySelector("[data-add-field]").addEventListener("click", addManualField);
+    const resetButton = root.querySelector("[data-reset-form]");
+
+    if (resetButton) {
+        resetButton.addEventListener("click", resetForm);
+    }
+
     root.querySelector("[data-form-url]").addEventListener("input", updatePayload);
 }
