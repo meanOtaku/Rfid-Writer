@@ -2,15 +2,15 @@
 <html>
 
 <head>
-    <title>RFID Manager</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Form Upload</title>
+    <link rel="stylesheet" href="../../style.css">
 </head>
 
 <body>
 
     <div class="container">
 
-        <h1>RFID Manager</h1>
+        <h1>Form Upload</h1>
 
         <div class="networkBar">
             <span>
@@ -31,32 +31,22 @@
             </span>
         </div>
 
+        <a class="navButton" href="../../index.html">
+            Home
+        </a>
+
         <div class="toolGrid">
 
             <div>
 
                 <div class="card">
 
-                    <h2>Auto Reader</h2>
+                    <h2>RFID Status</h2>
 
                     <p>
                         UID:
                         <span id="rfidUid">
                             No Card
-                        </span>
-                    </p>
-
-                    <p>
-                        Card:
-                        <span id="cardType">
-                            Unknown
-                        </span>
-                    </p>
-
-                    <p>
-                        Data:
-                        <span id="dataType">
-                            Auto
                         </span>
                     </p>
 
@@ -71,23 +61,11 @@
 
                 <div class="card">
 
-                    <h2>Navigation</h2>
+                    <h2>Upload Status</h2>
 
-                    <a class="navButton" href="wifi/wifi.html">
-                        WiFi Configuration
-                    </a>
-                    <br><br>
-                    <a class="navButton" href="rfid/mifare/mifare.html">
-                        Mifare Classic Tools
-                    </a>
-                    <br><br>
-                    <a class="navButton" href="rfid/ndef/ndef.html">
-                        NDEF Tools
-                    </a>
-                    <br><br>
-                    <a class="navButton" href="rfid/form_submit/form_submit.html">
-                        Form Upload
-                    </a>
+                    <p id="uploadStatus">
+                        Tap an NDEF card with form data
+                    </p>
 
                 </div>
 
@@ -95,7 +73,7 @@
 
             <div class="card resultCard">
 
-                <h2>Read Result</h2>
+                <h2>Card Data</h2>
 
                 <pre id="readResult">No data read yet</pre>
 
@@ -105,8 +83,8 @@
 
     </div>
 
-    <script src="network_status.js"></script>
-    <script src="home.js"></script>
+    <script src="../../network_status.js"></script>
+    <script src="form_submit.js"></script>
 
 </body>
 
