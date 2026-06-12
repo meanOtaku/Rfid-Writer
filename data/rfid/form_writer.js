@@ -395,11 +395,11 @@ function createFormWriter(options) {
             const value = fieldValue(field);
 
             if (Array.isArray(value) ? value.length > 0 : value) {
-                payload.fields.push([
-                    field.id,
-                    field.label,
+                payload.fields.push({
+                    entry: field.id,
+                    label: field.label,
                     value
-                ]);
+                });
             }
         });
 

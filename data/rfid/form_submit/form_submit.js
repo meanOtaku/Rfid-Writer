@@ -52,18 +52,10 @@ function parseDirectFields(payload) {
     }
 
     return payload.fields.map(field => {
-        if (Array.isArray(field)) {
-            return {
-                entry: String(field[0] || ""),
-                label: String(field[1] || ""),
-                value: field[2]
-            };
-        }
-
         return {
-            entry: String(field.entry || field.id || ""),
-            label: String(field.label || field.name || ""),
-            value: field.value
+            entry: String(field && field.entry ? field.entry : ""),
+            label: String(field && field.label ? field.label : ""),
+            value: field ? field.value : undefined
         };
     }).filter(field => field.entry && field.entry.startsWith("entry.") && field.value !== undefined);
 }
@@ -156,7 +148,7 @@ async function handleCardData(text) {
         readResult.innerText = previewCardData(cardData);
         await submitForm(cardData);
     } catch (err) {
-        readResult.innerText = text || "No data read";
+        readResult.innerText = formatRfidData(text) || "No data read";
         uploadStatus.innerText = "Upload failed: " + err.message;
     }
 }

@@ -80,7 +80,7 @@ socket.onmessage = e => {
 
     if (data.type === "rfid_read") {
         const readText = data.success !== false
-            ? (data.data || "No readable data")
+            ? (formatRfidData(data.data) || "No readable data")
             : "Read failed: " + (data.error || "unknown");
 
         rfidUid.innerText = data.uid;
@@ -102,7 +102,7 @@ socket.onmessage = e => {
             : "Write Failed: " + (data.error || "unknown");
 
         document.getElementById("readResult").innerText = data.success
-            ? "Wrote message:\n" + (data.data || getWriteData())
+            ? "Wrote message:\n" + (formatRfidData(data.data || getWriteData()) || "")
             : "Write failed: " + (data.error || "unknown");
     }
 
@@ -116,7 +116,7 @@ socket.onmessage = e => {
             : "Failed";
 
         document.getElementById("readResult").innerText = data.success
-            ? "Converted NDEF to Classic blocks:\n" + (data.data || "")
+            ? "Converted NDEF to Classic blocks:\n" + (formatRfidData(data.data) || "")
             : "Convert failed: " + (data.error || "unknown");
     }
 

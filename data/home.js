@@ -81,7 +81,7 @@ socket.onmessage = e => {
             ? "Read Successful"
             : "Read Failed: " + (data.error || "unknown");
         readResult.innerText = data.success !== false
-            ? (data.data || "No readable data")
+            ? (formatRfidData(data.data) || "No readable data")
             : "Read failed: " + (data.error || "unknown");
     }
 

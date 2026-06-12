@@ -56,7 +56,7 @@ socket.onmessage = e => {
 
     if (data.type === "rfid_read") {
         const readText = data.success !== false
-            ? (data.data || "Empty NDEF message")
+            ? (formatRfidData(data.data) || "Empty NDEF message")
             : "Read failed: " + (data.error || "unknown");
 
         rfidUid.innerText = data.uid;
@@ -78,7 +78,7 @@ socket.onmessage = e => {
             : "NDEF Write Failed: " + (data.error || "unknown");
 
         document.getElementById("readResult").innerText = data.success
-            ? "Wrote NDEF message:\n" + (data.data || getWriteData())
+            ? "Wrote NDEF message:\n" + (formatRfidData(data.data || getWriteData()) || "")
             : "Write failed: " + (data.error || "unknown");
     }
 
