@@ -7,6 +7,12 @@ function updateNetworkStatus(data) {
         return;
     }
 
+    const hasNetworkData = "connected" in data || "ssid" in data || "ap_ip" in data || "sta_ip" in data || "ip" in data;
+
+    if (data.type && !hasNetworkData) {
+        return;
+    }
+
     apIp.innerText = data.ap_ip || "192.168.4.1";
     staIp.innerText = data.sta_ip || data.ip || "Not connected";
     staName.innerText = data.connected ? (data.ssid || "Connected") : "Not connected";

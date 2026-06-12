@@ -181,7 +181,7 @@ bool readClassicBlocksBySector(RFIDCard &card, String &outData, String &outError
             continue;
         }
 
-        if (!card.authenticate((uint8_t)firstBlock, nullptr, false)) {
+        if (!authenticateBlockWithKnownKeys(card, (uint8_t)firstBlock)) {
             card.stopCrypto();
 
             if (!resetCardSession(card)) {
@@ -189,13 +189,9 @@ bool readClassicBlocksBySector(RFIDCard &card, String &outData, String &outError
                 outData += String(sector);
                 outData += ": card reset failed";
                 resetFailed = true;
-                continue;
             }
 
-            if (!card.authenticate((uint8_t)firstBlock, nullptr, false)) {
-                card.stopCrypto();
-                continue;
-            }
+            continue;
         }
 
         for (uint16_t block = firstBlock; block < trailerBlock; block++) {

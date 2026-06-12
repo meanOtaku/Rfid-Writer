@@ -29,10 +29,18 @@ private:
     bool scanInProgress = false;
 
     int reconnectAttempts = 0;
+    unsigned long lastReconnectAttempt = 0;
 
     static constexpr int MAX_RECONNECT_ATTEMPTS = 3;
+    static constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
 
     void broadcastStatus();
+
+    bool isStationConnected();
+
+    void syncConnectionState();
+
+    void reconnectStoredWifi();
 
     void saveWifiCredentials(const String &ssid, const String &password);
 

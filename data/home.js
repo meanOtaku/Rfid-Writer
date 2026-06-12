@@ -36,7 +36,17 @@ function cardTypeLabel(type) {
         return "Detecting...";
     }
 
-    return "Detecting...";
+    const normalized = type.toLowerCase();
+
+    if (normalized.includes("ultralight")) {
+        return "NDEF";
+    }
+
+    if (normalized.includes("mifare")) {
+        return "Classic";
+    }
+
+    return type;
 }
 
 function resetReader() {

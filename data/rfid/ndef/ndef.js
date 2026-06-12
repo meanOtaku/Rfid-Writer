@@ -4,6 +4,7 @@ const blockData = document.getElementById("blockData");
 const formPayload = document.getElementById("formPayload");
 const messageEditor = document.getElementById("messageEditor");
 const formWriter = document.getElementById("formWriter");
+const writeSourceCard = document.getElementById("writeSourceCard");
 
 function getRFIDMode() {
     return document.querySelector('input[name="rfidMode"]:checked').value;
@@ -18,10 +19,12 @@ function getWriteData() {
 }
 
 function updateWriteSourceUI() {
+    const isWriteMode = getRFIDMode() === "write";
     const useForm = getWriteSource() === "form";
 
-    messageEditor.classList.toggle("hidden", useForm);
-    formWriter.classList.toggle("hidden", !useForm);
+    writeSourceCard.classList.toggle("hidden", !isWriteMode);
+    messageEditor.classList.toggle("hidden", !isWriteMode || useForm);
+    formWriter.classList.toggle("hidden", !isWriteMode || !useForm);
 }
 
 async function saveRFIDConfig() {
@@ -92,7 +95,10 @@ socket.onmessage = e => {
 };
 
 document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
-    r.addEventListener("change", saveRFIDConfig);
+    r.addEventListener("change", () => {
+        updateWriteSourceUI();
+        saveRFIDConfig();
+    });
 });
 
 document.querySelectorAll('input[name="writeSource"]').forEach(r => {

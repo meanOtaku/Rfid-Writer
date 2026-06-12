@@ -27,6 +27,7 @@ void WiFiManager::begin() {
 
             wifiConnected = true;
             wifiConnecting = false;
+            connectedSSID = WiFi.SSID();
 
             reconnectAttempts = 0;
 
@@ -49,24 +50,18 @@ void WiFiManager::begin() {
 
             Serial.printf("STA Disconnected. Reason=%d\n", info.wifi_sta_disconnected.reason);
 
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            if (!prefs.isKey("ssid")) {
+                Serial.println("No saved WiFi credentials");
+            } else if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts++;
 
                 Serial.printf("Reconnect %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
 
-                String ssid = prefs.getString("ssid", "");
-
-                String pass = prefs.getString("pass", "");
-
-                WiFi.begin(ssid.c_str(), pass.c_str());
+                reconnectStoredWifi();
             } else {
-                Serial.println("Max reconnect attempts reached");
-
-                clearWifiCredentials();
-
-                WiFi.disconnect(false, false);
-                WiFi.mode(WIFI_AP_STA);
-                ensureAccessPoint();
+                Serial.println("Reconnect paused; saved credentials kept");
+                reconnectAttempts = 0;
+                lastReconnectAttempt = millis();
             }
 
             broadcastStatus();
@@ -83,7 +78,43 @@ void WiFiManager::begin() {
     setupWebSocket();
 }
 
-void WiFiManager::update() { handleWifiScan(); }
+void WiFiManager::update() {
+    handleWifiScan();
+    syncConnectionState();
+
+    if (wifiConnecting && !wifiConnected && millis() - lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS) {
+        wifiConnecting = false;
+    }
+
+    if (!wifiConnected && !wifiConnecting && !scanInProgress && prefs.isKey("ssid") &&
+        millis() - lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS) {
+        reconnectAttempts = 0;
+        reconnectStoredWifi();
+    }
+}
+
+bool WiFiManager::isStationConnected() {
+    return WiFi.status() == WL_CONNECTED && WiFi.localIP().toString() != "0.0.0.0";
+}
+
+void WiFiManager::syncConnectionState() {
+    bool connected = isStationConnected();
+
+    if (connected == wifiConnected) {
+        return;
+    }
+
+    wifiConnected = connected;
+    wifiConnecting = false;
+
+    if (connected) {
+        connectedSSID = WiFi.SSID();
+        reconnectAttempts = 0;
+    }
+
+    ensureAccessPoint();
+    broadcastStatus();
+}
 
 void WiFiManager::broadcastStatus() {
     JsonDocument doc;
@@ -125,6 +156,7 @@ void WiFiManager::startWifiConnection(const String &ssid, const String &password
     wifiConnecting = true;
 
     WiFi.begin(ssid.c_str(), password.c_str());
+    lastReconnectAttempt = millis();
 }
 
 void WiFiManager::connectStoredWifi() {
@@ -139,6 +171,25 @@ void WiFiManager::connectStoredWifi() {
     String pass = prefs.getString("pass");
 
     startWifiConnection(ssid, pass);
+}
+
+void WiFiManager::reconnectStoredWifi() {
+    String ssid = prefs.getString("ssid", "");
+
+    if (ssid.length() == 0) {
+        return;
+    }
+
+    String pass = prefs.getString("pass", "");
+
+    WiFi.mode(WIFI_AP_STA);
+    ensureAccessPoint();
+
+    connectedSSID = ssid;
+    wifiConnecting = true;
+    lastReconnectAttempt = millis();
+
+    WiFi.begin(ssid.c_str(), pass.c_str());
 }
 
 void WiFiManager::startWifiScan() {

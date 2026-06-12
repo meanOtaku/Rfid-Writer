@@ -5,6 +5,7 @@ const blockData = document.getElementById("blockData");
 const formPayload = document.getElementById("formPayload");
 const messageEditor = document.getElementById("messageEditor");
 const formWriter = document.getElementById("formWriter");
+const writeSourceCard = document.getElementById("writeSourceCard");
 const convertStatus = document.getElementById("convertStatus");
 
 function getRFIDMode() {
@@ -24,10 +25,12 @@ function shouldWriteNdef() {
 }
 
 function updateWriteSourceUI() {
+    const isWriteMode = getRFIDMode() === "write";
     const useForm = getWriteSource() === "form";
 
-    messageEditor.classList.toggle("hidden", useForm);
-    formWriter.classList.toggle("hidden", !useForm);
+    writeSourceCard.classList.toggle("hidden", !isWriteMode);
+    messageEditor.classList.toggle("hidden", !isWriteMode || useForm);
+    formWriter.classList.toggle("hidden", !isWriteMode || !useForm);
 }
 
 async function saveRFIDConfig() {
@@ -76,12 +79,20 @@ socket.onmessage = e => {
     }
 
     if (data.type === "rfid_read") {
+        const readText = data.success !== false
+            ? (data.data || "No readable data")
+            : "Read failed: " + (data.error || "unknown");
+
         rfidUid.innerText = data.uid;
         rfidStatus.innerText = data.success !== false
             ? "Read Successful"
             : "Read Failed: " + (data.error || "unknown");
-        blockData.value = data.data;
-        document.getElementById("readResult").innerText = data.data;
+
+        if (data.success !== false) {
+            blockData.value = data.data || "";
+        }
+
+        document.getElementById("readResult").innerText = readText;
     }
 
     if (data.type === "rfid_write") {
@@ -121,7 +132,10 @@ socket.onmessage = e => {
 };
 
 document.querySelectorAll('input[name="rfidMode"]').forEach(r => {
-    r.addEventListener("change", saveRFIDConfig);
+    r.addEventListener("change", () => {
+        updateWriteSourceUI();
+        saveRFIDConfig();
+    });
 });
 
 document.querySelectorAll('input[name="writeSource"]').forEach(r => {
