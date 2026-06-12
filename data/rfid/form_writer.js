@@ -33,9 +33,19 @@ function createFormWriter(options) {
             return "";
         }
 
-        return trimmed
+        const normalized = trimmed
             .replace("/edit", "/viewform")
             .replace("/formResponse", "/viewform");
+
+        try {
+            const parsed = new URL(normalized);
+            parsed.hash = "";
+            parsed.search = "";
+
+            return parsed.toString();
+        } catch (err) {
+            return normalized.split("#")[0].split("?")[0];
+        }
     }
 
     async function fetchText(url) {
@@ -376,25 +386,25 @@ function createFormWriter(options) {
 
     function buildPayload() {
         const formUrl = normalizeUrl(root.querySelector("[data-form-url]").value);
-        const payload = {
-            type: "google_form",
-            form: formUrl,
-            values: {}
-        };
+        const values = {};
+
+        if (formUrl) {
+            values.form = formUrl;
+        }
 
         fields.forEach(field => {
             const value = fieldValue(field);
 
             if (Array.isArray(value) ? value.length > 0 : value) {
-                payload.values[field.id] = value;
+                values[field.label] = value;
             }
         });
 
-        if (!formUrl && Object.keys(payload.values).length === 0) {
+        if (Object.keys(values).length === 0) {
             return "";
         }
 
-        return JSON.stringify(payload);
+        return JSON.stringify(values);
     }
 
     function updatePayload() {

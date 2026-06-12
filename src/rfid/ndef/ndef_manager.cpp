@@ -276,13 +276,10 @@ bool readType2Capacity(RFIDCard &card, uint16_t *dataBytes, String &outError) {
 bool buildTextRecord(const String &text, uint8_t *message, size_t messageSize, size_t *messageLen, String &outError) {
     size_t textLen = text.length();
     size_t payloadLen = textLen + 3;
+    bool shortRecord = payloadLen <= 255;
+    size_t headerLen = shortRecord ? 4 : 7;
 
-    if (payloadLen > 255) {
-        outError = "NDEF text is too long for this writer";
-        return false;
-    }
-
-    size_t needed = 4 + payloadLen;
+    size_t needed = headerLen + payloadLen;
 
     if (needed > messageSize) {
         outError = "NDEF message is too large";
@@ -290,9 +287,18 @@ bool buildTextRecord(const String &text, uint8_t *message, size_t messageSize, s
     }
 
     size_t index = 0;
-    message[index++] = 0xD1;
+    message[index++] = shortRecord ? 0xD1 : 0xC1;
     message[index++] = 0x01;
-    message[index++] = (uint8_t)payloadLen;
+
+    if (shortRecord) {
+        message[index++] = (uint8_t)payloadLen;
+    } else {
+        message[index++] = (uint8_t)(payloadLen >> 24);
+        message[index++] = (uint8_t)(payloadLen >> 16);
+        message[index++] = (uint8_t)(payloadLen >> 8);
+        message[index++] = (uint8_t)(payloadLen & 0xFF);
+    }
+
     message[index++] = 'T';
     message[index++] = 0x02;
     message[index++] = 'e';
