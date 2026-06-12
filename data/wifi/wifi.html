@@ -25,6 +25,10 @@
                 Network:
                 <strong id="networkStaName">Loading...</strong>
             </span>
+            <span>
+                Connect:
+                <strong id="networkRetryStatus">Loading...</strong>
+            </span>
         </div>
 
         <a class="navButton" href="../index.html">
@@ -43,27 +47,51 @@
 
         <div class="card">
 
-            <button id="scan">
-                Scan Networks
-            </button>
+            <h2>Connect WiFi</h2>
 
-            <br><br>
+            <label class="choice">
+                <input type="radio" name="wifiMode" value="saved" checked>
+                Saved WiFi
+            </label>
 
-            <select id="networks">
-                <option>
-                    Select Network
-                </option>
-            </select>
+            <label class="choice">
+                <input type="radio" name="wifiMode" value="new">
+                New WiFi
+            </label>
 
-            <br><br>
+            <div id="savedWifiSection">
+                <div id="savedNetworks" class="savedNetworks">
+                    Loading saved networks...
+                </div>
 
-            <input type="password" id="password" placeholder="WiFi Password">
+                <div class="buttonRow">
+                    <button id="connectSaved">
+                        Connect Saved
+                    </button>
 
-            <br><br>
+                    <button id="deleteSaved">
+                        Delete Selected
+                    </button>
+                </div>
+            </div>
 
-            <button id="connect">
-                Connect
-            </button>
+            <div id="newWifiSection" class="hidden">
+                <button id="scan">
+                    Scan Networks
+                </button>
+
+                <select id="networks">
+                    <option>
+                        Select Network
+                    </option>
+                </select>
+
+                <input type="password" id="password" placeholder="WiFi Password">
+
+                <button id="connect">
+                    Connect New WiFi
+                </button>
+            </div>
 
         </div>
 

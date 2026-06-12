@@ -20,6 +20,10 @@ button {
     padding: 10px;
 }
 
+.hidden {
+    display: none;
+}
+
 .networkBar {
     display: flex;
     flex-wrap: wrap;
@@ -37,11 +41,53 @@ button {
 }
 
 select,
-input {
+input:not([type="radio"]):not([type="checkbox"]) {
     width: 100%;
     margin-top: 10px;
     margin-bottom: 10px;
     padding: 10px;
+    box-sizing: border-box;
+}
+
+.choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 18px 16px 0;
+}
+
+.savedNetworks {
+    border: 1px solid #d7dce2;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.savedNetworkRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #e6e9ed;
+}
+
+.savedNetworkRow:last-child {
+    border-bottom: 0;
+}
+
+.savedNetworkChoice,
+.savedNetworkDelete {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    word-break: break-word;
+}
+
+.buttonRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 #readResult {

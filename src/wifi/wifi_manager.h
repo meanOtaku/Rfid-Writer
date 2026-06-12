@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ArduinoJson.h>
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <Preferences.h>
@@ -28,25 +29,40 @@ private:
 
     bool scanInProgress = false;
 
-    int reconnectAttempts = 0;
-    unsigned long lastReconnectAttempt = 0;
+    unsigned long connectionStartedAt = 0;
 
-    static constexpr int MAX_RECONNECT_ATTEMPTS = 3;
-    static constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
+    static constexpr int MAX_SAVED_WIFI_NETWORKS = 8;
+    static constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
 
     void broadcastStatus();
+
+    void addStatusFields(JsonDocument &doc);
+
+    void addSavedNetworks(JsonArray networks);
 
     bool isStationConnected();
 
     void syncConnectionState();
 
-    void reconnectStoredWifi();
+    int savedNetworkCount();
+
+    String savedNetworkKey(const char *prefix, int index);
+
+    String getSavedSSID(int index);
+
+    String getSavedPassword(int index);
+
+    int findSavedNetwork(const String &ssid);
+
+    bool getSavedPassword(const String &ssid, String &password);
+
+    bool deleteSavedNetwork(const String &ssid);
+
+    void migrateSavedWifiCredentials();
 
     void saveWifiCredentials(const String &ssid, const String &password);
 
-    void startWifiConnection(const String &ssid, const String &password);
-
-    void connectStoredWifi();
+    void startWifiConnection(const String &ssid, const String &password, bool saveCredentials);
 
     void startWifiScan();
 

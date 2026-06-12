@@ -10,6 +10,7 @@ WiFiManager::WiFiManager(AsyncWebServer *srv, AsyncWebSocket *websocket) {
 
 void WiFiManager::begin() {
     prefs.begin("wifi", false);
+    migrateSavedWifiCredentials();
 
     WiFi.mode(WIFI_AP_STA);
     WiFi.setSleep(false);
@@ -29,8 +30,6 @@ void WiFiManager::begin() {
             wifiConnecting = false;
             connectedSSID = WiFi.SSID();
 
-            reconnectAttempts = 0;
-
             Serial.print("STA IP: ");
             Serial.println(WiFi.localIP());
 
@@ -49,20 +48,7 @@ void WiFiManager::begin() {
             wifiConnecting = false;
 
             Serial.printf("STA Disconnected. Reason=%d\n", info.wifi_sta_disconnected.reason);
-
-            if (!prefs.isKey("ssid")) {
-                Serial.println("No saved WiFi credentials");
-            } else if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
-
-                Serial.printf("Reconnect %d/%d\n", reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
-
-                reconnectStoredWifi();
-            } else {
-                Serial.println("Reconnect paused; saved credentials kept");
-                reconnectAttempts = 0;
-                lastReconnectAttempt = millis();
-            }
+            Serial.println("WiFi disconnected; manual reconnect required");
 
             broadcastStatus();
 
@@ -73,7 +59,11 @@ void WiFiManager::begin() {
         }
     });
 
-    connectStoredWifi();
+    if (savedNetworkCount() == 0) {
+        Serial.println("No saved WiFi credentials");
+    } else {
+        Serial.printf("%d saved WiFi network(s). Connect manually from Web UI.\n", savedNetworkCount());
+    }
 
     setupWebSocket();
 }
@@ -82,14 +72,9 @@ void WiFiManager::update() {
     handleWifiScan();
     syncConnectionState();
 
-    if (wifiConnecting && !wifiConnected && millis() - lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS) {
+    if (wifiConnecting && !wifiConnected && millis() - connectionStartedAt >= WIFI_CONNECT_TIMEOUT_MS) {
         wifiConnecting = false;
-    }
-
-    if (!wifiConnected && !wifiConnecting && !scanInProgress && prefs.isKey("ssid") &&
-        millis() - lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS) {
-        reconnectAttempts = 0;
-        reconnectStoredWifi();
+        broadcastStatus();
     }
 }
 
@@ -109,26 +94,39 @@ void WiFiManager::syncConnectionState() {
 
     if (connected) {
         connectedSSID = WiFi.SSID();
-        reconnectAttempts = 0;
     }
 
     ensureAccessPoint();
     broadcastStatus();
 }
 
-void WiFiManager::broadcastStatus() {
-    JsonDocument doc;
-
+void WiFiManager::addStatusFields(JsonDocument &doc) {
     doc["connected"] = wifiConnected;
 
     doc["ssid"] = connectedSSID;
 
     doc["ap_ip"] = WiFi.softAPIP().toString();
 
+    bool hasSavedCredentials = savedNetworkCount() > 0;
+
+    doc["wifi_connecting"] = wifiConnecting;
+    doc["wifi_retry_active"] = false;
+    doc["wifi_retry_paused"] = false;
+    doc["wifi_retry_attempt"] = 0;
+    doc["wifi_retry_max"] = 0;
+    doc["wifi_has_saved"] = hasSavedCredentials;
+    doc["wifi_manual"] = true;
+
     if (wifiConnected) {
         doc["ip"] = WiFi.localIP().toString();
         doc["sta_ip"] = WiFi.localIP().toString();
     }
+}
+
+void WiFiManager::broadcastStatus() {
+    JsonDocument doc;
+
+    addStatusFields(doc);
 
     String msg;
 
@@ -137,59 +135,160 @@ void WiFiManager::broadcastStatus() {
     ws->textAll(msg);
 }
 
-void WiFiManager::saveWifiCredentials(const String &ssid, const String &password) {
-    prefs.putString("ssid", ssid);
+void WiFiManager::addSavedNetworks(JsonArray networks) {
+    for (int i = 0; i < savedNetworkCount(); i++) {
+        String ssid = getSavedSSID(i);
 
+        if (ssid.length() == 0) {
+            continue;
+        }
+
+        JsonObject network = networks.add<JsonObject>();
+        network["ssid"] = ssid;
+    }
+}
+
+int WiFiManager::savedNetworkCount() {
+    int count = prefs.getInt("saved_count", 0);
+
+    if (count < 0) {
+        return 0;
+    }
+
+    if (count > MAX_SAVED_WIFI_NETWORKS) {
+        return MAX_SAVED_WIFI_NETWORKS;
+    }
+
+    return count;
+}
+
+String WiFiManager::savedNetworkKey(const char *prefix, int index) {
+    return String(prefix) + String(index);
+}
+
+String WiFiManager::getSavedSSID(int index) {
+    return prefs.getString(savedNetworkKey("ssid", index).c_str(), "");
+}
+
+String WiFiManager::getSavedPassword(int index) {
+    return prefs.getString(savedNetworkKey("pass", index).c_str(), "");
+}
+
+int WiFiManager::findSavedNetwork(const String &ssid) {
+    for (int i = 0; i < savedNetworkCount(); i++) {
+        if (getSavedSSID(i) == ssid) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+bool WiFiManager::getSavedPassword(const String &ssid, String &password) {
+    int index = findSavedNetwork(ssid);
+
+    if (index < 0) {
+        return false;
+    }
+
+    password = getSavedPassword(index);
+
+    return true;
+}
+
+bool WiFiManager::deleteSavedNetwork(const String &ssid) {
+    int index = findSavedNetwork(ssid);
+
+    if (index < 0) {
+        return false;
+    }
+
+    int count = savedNetworkCount();
+
+    for (int i = index; i < count - 1; i++) {
+        prefs.putString(savedNetworkKey("ssid", i).c_str(), getSavedSSID(i + 1));
+        prefs.putString(savedNetworkKey("pass", i).c_str(), getSavedPassword(i + 1));
+    }
+
+    prefs.remove(savedNetworkKey("ssid", count - 1).c_str());
+    prefs.remove(savedNetworkKey("pass", count - 1).c_str());
+    prefs.putInt("saved_count", count - 1);
+
+    if (connectedSSID == ssid) {
+        WiFi.disconnect(false);
+        wifiConnected = false;
+        wifiConnecting = false;
+        connectedSSID = "";
+    }
+
+    return true;
+}
+
+void WiFiManager::migrateSavedWifiCredentials() {
+    if (!prefs.isKey("ssid") || savedNetworkCount() > 0) {
+        return;
+    }
+
+    String ssid = prefs.getString("ssid", "");
+    String password = prefs.getString("pass", "");
+
+    if (ssid.length() == 0) {
+        return;
+    }
+
+    prefs.putString("ssid0", ssid);
+    prefs.putString("pass0", password);
+    prefs.putInt("saved_count", 1);
+
+    Serial.println("Migrated saved WiFi credential");
+}
+
+void WiFiManager::saveWifiCredentials(const String &ssid, const String &password) {
+    if (ssid.length() == 0) {
+        return;
+    }
+
+    int index = findSavedNetwork(ssid);
+
+    if (index < 0) {
+        int count = savedNetworkCount();
+
+        if (count >= MAX_SAVED_WIFI_NETWORKS) {
+            index = MAX_SAVED_WIFI_NETWORKS - 1;
+        } else {
+            index = count;
+            prefs.putInt("saved_count", count + 1);
+        }
+    }
+
+    prefs.putString(savedNetworkKey("ssid", index).c_str(), ssid);
+    prefs.putString(savedNetworkKey("pass", index).c_str(), password);
+
+    prefs.putString("ssid", ssid);
     prefs.putString("pass", password);
 }
 
-void WiFiManager::startWifiConnection(const String &ssid, const String &password) {
+void WiFiManager::startWifiConnection(const String &ssid, const String &password, bool saveCredentials) {
+    if (ssid.length() == 0) {
+        return;
+    }
+
     Serial.printf("Connecting to %s\n", ssid.c_str());
 
     WiFi.mode(WIFI_AP_STA);
     ensureAccessPoint();
 
-    saveWifiCredentials(ssid, password);
+    if (saveCredentials) {
+        saveWifiCredentials(ssid, password);
+    }
 
     connectedSSID = ssid;
 
     wifiConnecting = true;
 
     WiFi.begin(ssid.c_str(), password.c_str());
-    lastReconnectAttempt = millis();
-}
-
-void WiFiManager::connectStoredWifi() {
-    if (!prefs.isKey("ssid")) {
-        Serial.println("No saved WiFi credentials");
-
-        return;
-    }
-
-    String ssid = prefs.getString("ssid");
-
-    String pass = prefs.getString("pass");
-
-    startWifiConnection(ssid, pass);
-}
-
-void WiFiManager::reconnectStoredWifi() {
-    String ssid = prefs.getString("ssid", "");
-
-    if (ssid.length() == 0) {
-        return;
-    }
-
-    String pass = prefs.getString("pass", "");
-
-    WiFi.mode(WIFI_AP_STA);
-    ensureAccessPoint();
-
-    connectedSSID = ssid;
-    wifiConnecting = true;
-    lastReconnectAttempt = millis();
-
-    WiFi.begin(ssid.c_str(), pass.c_str());
+    connectionStartedAt = millis();
+    broadcastStatus();
 }
 
 void WiFiManager::startWifiScan() {
@@ -269,16 +368,7 @@ void WiFiManager::setupWebSocket() {
 
             JsonDocument doc;
 
-            doc["connected"] = wifiConnected;
-
-            doc["ssid"] = connectedSSID;
-
-            if (wifiConnected) {
-                doc["ip"] = WiFi.localIP().toString();
-                doc["sta_ip"] = WiFi.localIP().toString();
-            }
-
-            doc["ap_ip"] = WiFi.softAPIP().toString();
+            addStatusFields(doc);
 
             String msg;
 
@@ -295,15 +385,7 @@ void WiFiManager::setupApi() {
     server->on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         JsonDocument doc;
 
-        doc["connected"] = wifiConnected;
-
-        doc["ssid"] = connectedSSID;
-
-        doc["ap_ip"] = WiFi.softAPIP().toString();
-
-        if (wifiConnected) {
-            doc["sta_ip"] = WiFi.localIP().toString();
-        }
+        addStatusFields(doc);
 
         String out;
 
@@ -316,6 +398,18 @@ void WiFiManager::setupApi() {
         startWifiScan();
 
         request->send(200, "application/json", "{\"status\":\"started\"}");
+    });
+
+    server->on("/api/wifi/saved", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        JsonArray networks = doc["networks"].to<JsonArray>();
+
+        addSavedNetworks(networks);
+
+        String out;
+        serializeJson(doc, out);
+
+        request->send(200, "application/json", out);
     });
 
     server->on(
@@ -335,20 +429,90 @@ void WiFiManager::setupApi() {
 
             String pass = doc["password"] | "";
 
-            reconnectAttempts = 0;
-            startWifiConnection(ssid, pass);
+            if (ssid.length() == 0) {
+                request->send(400, "application/json", "{\"error\":\"missing ssid\"}");
+
+                return;
+            }
+
+            startWifiConnection(ssid, pass, true);
 
             request->send(200, "application/json", "{\"status\":\"connecting\"}");
+        });
+
+    server->on(
+        "/api/wifi/connect-saved", HTTP_POST, [](AsyncWebServerRequest *request) {}, nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+
+            auto err = deserializeJson(doc, data, len);
+
+            if (err) {
+                request->send(400, "application/json", "{\"error\":\"invalid json\"}");
+
+                return;
+            }
+
+            String ssid = doc["ssid"] | "";
+            String password;
+
+            if (!getSavedPassword(ssid, password)) {
+                request->send(404, "application/json", "{\"error\":\"saved network not found\"}");
+
+                return;
+            }
+
+            startWifiConnection(ssid, password, false);
+
+            request->send(200, "application/json", "{\"status\":\"connecting\"}");
+        });
+
+    server->on(
+        "/api/wifi/delete-saved", HTTP_POST, [](AsyncWebServerRequest *request) {}, nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+
+            auto err = deserializeJson(doc, data, len);
+
+            if (err || !doc["ssids"].is<JsonArray>()) {
+                request->send(400, "application/json", "{\"error\":\"invalid json\"}");
+
+                return;
+            }
+
+            int deleted = 0;
+
+            for (JsonVariant value : doc["ssids"].as<JsonArray>()) {
+                String ssid = value.as<String>();
+
+                if (deleteSavedNetwork(ssid)) {
+                    deleted++;
+                }
+            }
+
+            broadcastStatus();
+
+            JsonDocument response;
+            response["deleted"] = deleted;
+
+            String out;
+            serializeJson(response, out);
+
+            request->send(200, "application/json", out);
         });
 }
 
 void WiFiManager::clearWifiCredentials() {
+    for (int i = 0; i < savedNetworkCount(); i++) {
+        prefs.remove(savedNetworkKey("ssid", i).c_str());
+        prefs.remove(savedNetworkKey("pass", i).c_str());
+    }
+
+    prefs.remove("saved_count");
     prefs.remove("ssid");
     prefs.remove("pass");
 
     connectedSSID = "";
-
-    reconnectAttempts = 0;
 
     Serial.println("WiFi credentials cleared");
 }
