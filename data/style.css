@@ -28,6 +28,7 @@ button {
 .fieldLabel {
     display: block;
     margin: 8px 0 0;
+    font-weight: 600;
 }
 
 [data-form-fields] {
@@ -54,6 +55,18 @@ label {
     display: inline-flex;
     align-items: center;
     margin: 4px 18px 4px 0;
+}
+
+.fieldOptions {
+    display: grid;
+    gap: 6px;
+    margin: 6px 0 8px;
+}
+
+.fieldOption {
+    display: flex;
+    align-items: center;
+    margin: 0;
 }
 
 h1 {
