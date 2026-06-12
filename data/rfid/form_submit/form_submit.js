@@ -27,173 +27,45 @@ function normalizeUrl(url) {
         return "";
     }
 
-    return trimmed
+    const normalized = trimmed
         .replace("/edit", "/viewform")
         .replace("/formResponse", "/viewform");
+
+    try {
+        const parsed = new URL(normalized);
+        parsed.hash = "";
+        parsed.search = "";
+
+        return parsed.toString();
+    } catch (err) {
+        return normalized.split("#")[0].split("?")[0];
+    }
 }
 
 function formResponseUrl(url) {
     return normalizeUrl(url).replace("/viewform", "/formResponse");
 }
 
-function normalizeLabel(label) {
-    return String(label || "")
-        .replace(/\s+/g, " ")
-        .replace(/\s+\*$/, "")
-        .trim()
-        .toLowerCase();
-}
-
-async function fetchFormHtml(url) {
-    const normalized = normalizeUrl(url);
-    const urls = [
-        normalized,
-        "https://api.allorigins.win/raw?url=" + encodeURIComponent(normalized),
-        "https://corsproxy.io/?" + encodeURIComponent(normalized)
-    ];
-
-    for (const candidate of urls) {
-        try {
-            const response = await fetch(candidate);
-
-            if (!response.ok) {
-                continue;
-            }
-
-            const html = await response.text();
-
-            if (html.includes("FB_PUBLIC_LOAD_DATA_")) {
-                return html;
-            }
-        } catch (err) {
-            // Try the next source.
-        }
-    }
-
-    throw new Error("Could not load Google Form");
-}
-
-function extractPublicLoadData(html) {
-    const marker = "FB_PUBLIC_LOAD_DATA_";
-    const markerIndex = html.indexOf(marker);
-
-    if (markerIndex < 0) {
-        return null;
-    }
-
-    const equalsIndex = html.indexOf("=", markerIndex);
-    const dataStart = html.indexOf("[", equalsIndex);
-
-    if (equalsIndex < 0 || dataStart < 0) {
-        return null;
-    }
-
-    let depth = 0;
-    let inString = false;
-    let quote = "";
-    let escaped = false;
-
-    for (let i = dataStart; i < html.length; i++) {
-        const char = html[i];
-
-        if (inString) {
-            if (escaped) {
-                escaped = false;
-            } else if (char === "\\") {
-                escaped = true;
-            } else if (char === quote) {
-                inString = false;
-            }
-
-            continue;
-        }
-
-        if (char === "\"" || char === "'") {
-            inString = true;
-            quote = char;
-            continue;
-        }
-
-        if (char === "[") {
-            depth++;
-        } else if (char === "]") {
-            depth--;
-
-            if (depth === 0) {
-                return Function("return " + html.slice(dataStart, i + 1))();
-            }
-        }
-    }
-
-    return null;
-}
-
-function collectEntryNodes(node, found) {
-    if (!Array.isArray(node)) {
-        return;
-    }
-
-    if (typeof node[0] === "number" && String(node[0]).length >= 5) {
-        found.push(node);
-        return;
-    }
-
-    node.forEach(child => collectEntryNodes(child, found));
-}
-
-function maybeQuestion(node) {
-    if (!Array.isArray(node)) {
-        return null;
-    }
-
-    const label = String(node[1] || "").replace(/\s+/g, " ").replace(/\s+\*$/, "").trim();
-    const entriesRoot = node[4];
-
-    if (!label || label === ":" || !Array.isArray(entriesRoot)) {
-        return null;
-    }
-
-    const entryNodes = [];
-    collectEntryNodes(entriesRoot, entryNodes);
-
-    if (entryNodes.length === 0 || typeof entryNodes[0][0] !== "number") {
-        return null;
-    }
-
-    return {
-        label,
-        entry: "entry." + entryNodes[0][0]
-    };
-}
-
-function findQuestions(node, found) {
-    if (!Array.isArray(node)) {
-        return;
-    }
-
-    const field = maybeQuestion(node);
-
-    if (field) {
-        found.push(field);
-        return;
-    }
-
-    node.forEach(child => findQuestions(child, found));
-}
-
-function parseGoogleFormFields(html) {
-    const data = extractPublicLoadData(html);
-    const fields = [];
-
-    if (!data) {
+function parseDirectFields(payload) {
+    if (!Array.isArray(payload.fields)) {
         return [];
     }
 
-    findQuestions(data, fields);
+    return payload.fields.map(field => {
+        if (Array.isArray(field)) {
+            return {
+                entry: String(field[0] || ""),
+                label: String(field[1] || ""),
+                value: field[2]
+            };
+        }
 
-    return fields.filter((field, index, all) => {
-        return all.findIndex(candidate => candidate.entry === field.entry) === index;
-    });
+        return {
+            entry: String(field.entry || field.id || ""),
+            label: String(field.label || field.name || ""),
+            value: field.value
+        };
+    }).filter(field => field.entry && field.entry.startsWith("entry.") && field.value !== undefined);
 }
 
 function parseCardPayload(text) {
@@ -209,21 +81,15 @@ function parseCardPayload(text) {
         throw new Error("Card data does not contain a form URL");
     }
 
-    const values = {};
+    const fields = parseDirectFields(payload);
 
-    Object.keys(payload).forEach(key => {
-        if (normalizeLabel(key) !== "form") {
-            values[key] = payload[key];
-        }
-    });
-
-    if (Object.keys(values).length === 0) {
-        throw new Error("Card data does not contain form field values");
+    if (fields.length === 0) {
+        throw new Error("Card does not contain direct Google Form fields. Write the card again with the updated form writer.");
     }
 
     return {
         form,
-        values
+        fields
     };
 }
 
@@ -242,34 +108,16 @@ function appendValue(body, entry, value) {
 }
 
 async function submitForm(cardData) {
-    uploadStatus.innerText = "Loading Google Form...";
-
-    const html = await fetchFormHtml(cardData.form);
-    const fields = parseGoogleFormFields(html);
-    const fieldMap = new Map();
-
-    fields.forEach(field => {
-        fieldMap.set(normalizeLabel(field.label), field);
-    });
-
     const body = new URLSearchParams();
-    const unmatched = [];
-    let matched = 0;
+    let submittedFields = 0;
 
-    Object.keys(cardData.values).forEach(label => {
-        const field = fieldMap.get(normalizeLabel(label));
-
-        if (!field) {
-            unmatched.push(label);
-            return;
-        }
-
-        appendValue(body, field.entry, cardData.values[label]);
-        matched++;
+    cardData.fields.forEach(field => {
+        appendValue(body, field.entry, field.value);
+        submittedFields++;
     });
 
-    if (matched === 0) {
-        throw new Error("No card fields matched the Google Form");
+    if (submittedFields === 0) {
+        throw new Error("No filled fields found on card");
     }
 
     uploadStatus.innerText = "Submitting form...";
@@ -283,9 +131,17 @@ async function submitForm(cardData) {
         body
     });
 
-    uploadStatus.innerText = unmatched.length > 0
-        ? "Submitted. Unmatched fields: " + unmatched.join(", ")
-        : "Submitted successfully";
+    uploadStatus.innerText = "Submitted " + submittedFields + " fields";
+}
+
+function previewCardData(cardData) {
+    let text = "Form: " + cardData.form + "\n\n";
+
+    cardData.fields.forEach(field => {
+        text += field.label + ": " + (Array.isArray(field.value) ? field.value.join(", ") : field.value) + "\n";
+    });
+
+    return text.trim();
 }
 
 async function handleCardData(text) {
@@ -294,12 +150,13 @@ async function handleCardData(text) {
     }
 
     lastSubmittedPayload = text;
-    readResult.innerText = text;
 
     try {
         const cardData = parseCardPayload(text);
+        readResult.innerText = previewCardData(cardData);
         await submitForm(cardData);
     } catch (err) {
+        readResult.innerText = text || "No data read";
         uploadStatus.innerText = "Upload failed: " + err.message;
     }
 }

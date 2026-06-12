@@ -386,25 +386,28 @@ function createFormWriter(options) {
 
     function buildPayload() {
         const formUrl = normalizeUrl(root.querySelector("[data-form-url]").value);
-        const values = {};
-
-        if (formUrl) {
-            values.form = formUrl;
-        }
+        const payload = {
+            form: formUrl,
+            fields: []
+        };
 
         fields.forEach(field => {
             const value = fieldValue(field);
 
             if (Array.isArray(value) ? value.length > 0 : value) {
-                values[field.label] = value;
+                payload.fields.push([
+                    field.id,
+                    field.label,
+                    value
+                ]);
             }
         });
 
-        if (Object.keys(values).length === 0) {
+        if (!payload.form && payload.fields.length === 0) {
             return "";
         }
 
-        return JSON.stringify(values);
+        return JSON.stringify(payload);
     }
 
     function updatePayload() {
