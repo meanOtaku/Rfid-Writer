@@ -384,30 +384,54 @@ function createFormWriter(options) {
         return input ? input.value.trim() : "";
     }
 
+    function escapePayloadValue(value) {
+        return String(value)
+            .replace(/\\/g, "\\\\")
+            .replace(/\t/g, "\\t")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+    }
+
     function buildPayload() {
         const formUrl = normalizeUrl(root.querySelector("[data-form-url]").value);
-        const payload = {
-            form: formUrl,
-            fields: []
-        };
+        const lines = [];
+
+        if (formUrl) {
+            lines.push("GFORM1");
+            lines.push(escapePayloadValue(formUrl));
+        }
 
         fields.forEach(field => {
             const value = fieldValue(field);
 
-            if (Array.isArray(value) ? value.length > 0 : value) {
-                payload.fields.push({
-                    entry: field.id,
-                    label: field.label,
-                    value
+            if (Array.isArray(value)) {
+                value.forEach(item => {
+                    if (item) {
+                        lines.push([
+                            field.id.replace("entry.", ""),
+                            escapePayloadValue(field.label),
+                            escapePayloadValue(item)
+                        ].join("\t"));
+                    }
                 });
+
+                return;
+            }
+
+            if (value) {
+                lines.push([
+                    field.id.replace("entry.", ""),
+                    escapePayloadValue(field.label),
+                    escapePayloadValue(value)
+                ].join("\t"));
             }
         });
 
-        if (!payload.form && payload.fields.length === 0) {
+        if (lines.length === 0) {
             return "";
         }
 
-        return JSON.stringify(payload);
+        return lines.join("\n");
     }
 
     function updatePayload() {

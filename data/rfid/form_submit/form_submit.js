@@ -46,34 +46,71 @@ function formResponseUrl(url) {
     return normalizeUrl(url).replace("/viewform", "/formResponse");
 }
 
-function parseDirectFields(payload) {
-    if (!Array.isArray(payload.fields)) {
-        return [];
+function unescapePayloadValue(value) {
+    let out = "";
+    let escaped = false;
+
+    String(value || "").split("").forEach(char => {
+        if (escaped) {
+            if (char === "t") {
+                out += "\t";
+            } else if (char === "n") {
+                out += "\n";
+            } else if (char === "r") {
+                out += "\r";
+            } else {
+                out += char;
+            }
+
+            escaped = false;
+            return;
+        }
+
+        if (char === "\\") {
+            escaped = true;
+            return;
+        }
+
+        out += char;
+    });
+
+    if (escaped) {
+        out += "\\";
     }
 
-    return payload.fields.map(field => {
-        return {
-            entry: String(field && field.entry ? field.entry : ""),
-            label: String(field && field.label ? field.label : ""),
-            value: field ? field.value : undefined
-        };
-    }).filter(field => field.entry && field.entry.startsWith("entry.") && field.value !== undefined);
+    return out;
 }
 
 function parseCardPayload(text) {
-    const payload = JSON.parse(text);
+    const lines = String(text || "").split("\n");
 
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-        throw new Error("Card data is not a form object");
+    if (lines[0] !== "GFORM1") {
+        throw new Error("Card data is not a compact form payload. Write the card again with the updated form writer.");
     }
 
-    const form = normalizeUrl(payload.form || payload.Form || "");
+    const form = normalizeUrl(unescapePayloadValue(lines[1] || ""));
 
     if (!form) {
         throw new Error("Card data does not contain a form URL");
     }
 
-    const fields = parseDirectFields(payload);
+    const fields = [];
+
+    for (let i = 2; i < lines.length; i++) {
+        const parts = lines[i].split("\t");
+
+        if (parts.length < 3) {
+            continue;
+        }
+
+        const entryId = parts[0];
+
+        fields.push({
+            entry: entryId.startsWith("entry.") ? entryId : "entry." + entryId,
+            label: unescapePayloadValue(parts[1]),
+            value: unescapePayloadValue(parts.slice(2).join("\t"))
+        });
+    }
 
     if (fields.length === 0) {
         throw new Error("Card does not contain direct Google Form fields. Write the card again with the updated form writer.");

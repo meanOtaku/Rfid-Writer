@@ -282,7 +282,8 @@ bool buildTextRecord(const String &text, uint8_t *message, size_t messageSize, s
     size_t needed = headerLen + payloadLen;
 
     if (needed > messageSize) {
-        outError = "NDEF message is too large";
+        outError = "NDEF message is too large: needs " + String(needed) + " bytes, writer limit " +
+                   String(messageSize) + " bytes";
         return false;
     }
 
@@ -324,7 +325,8 @@ bool buildNdefTlv(const String &text, uint8_t *tlv, size_t tlvSize, size_t *tlvL
     size_t needed = 1 + lengthBytes + messageLen + 1;
 
     if (needed > tlvSize) {
-        outError = "NDEF payload is too large";
+        outError = "NDEF payload is too large: needs " + String(needed) + " bytes, writer limit " +
+                   String(tlvSize) + " bytes";
         return false;
     }
 
@@ -355,7 +357,8 @@ bool writeType2Storage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen, String
     }
 
     if (tlvLen > dataBytes) {
-        outError = "NDEF message is larger than Type 2 tag capacity";
+        outError = "NDEF message is larger than Type 2 tag capacity: needs " + String(tlvLen) +
+                   " bytes, tag capacity " + String(dataBytes) + " bytes";
         return false;
     }
 
@@ -430,7 +433,7 @@ bool writeMifareClassicStorage(RFIDCard &card, const uint8_t *tlv, size_t tlvLen
         resetMifareSession(card);
     }
 
-    outError = "NDEF message is larger than writable MIFARE Classic space";
+    outError = "NDEF message is larger than writable MIFARE Classic space: needs " + String(tlvLen) + " bytes";
     return false;
 }
 

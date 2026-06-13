@@ -3,6 +3,65 @@ function formatRfidData(data) {
         return "";
     }
 
+    function unescapePayloadValue(value) {
+        let out = "";
+        let escaped = false;
+
+        String(value || "").split("").forEach(char => {
+            if (escaped) {
+                if (char === "t") {
+                    out += "\t";
+                } else if (char === "n") {
+                    out += "\n";
+                } else if (char === "r") {
+                    out += "\r";
+                } else {
+                    out += char;
+                }
+
+                escaped = false;
+                return;
+            }
+
+            if (char === "\\") {
+                escaped = true;
+                return;
+            }
+
+            out += char;
+        });
+
+        if (escaped) {
+            out += "\\";
+        }
+
+        return out;
+    }
+
+    function displayCompactForm(value) {
+        const lines = String(value || "").split("\n");
+
+        if (lines[0] !== "GFORM1") {
+            return "";
+        }
+
+        const out = [
+            "Form: " + unescapePayloadValue(lines[1] || "")
+        ];
+
+        for (let i = 2; i < lines.length; i++) {
+            const parts = lines[i].split("\t");
+
+            if (parts.length < 3) {
+                continue;
+            }
+
+            out.push(unescapePayloadValue(parts[1]) + ": " + unescapePayloadValue(parts.slice(2).join("\t")));
+        }
+
+        return out.join("\n");
+    }
+
     function extractJson(value) {
         const text = String(value).trim();
         const start = text.indexOf("{");
@@ -21,20 +80,21 @@ function formatRfidData(data) {
         }
 
         const lines = [];
-        const form = payload.form || payload.Form || "";
+        const form = payload.u || "";
 
         if (form) {
             lines.push("Form: " + form);
         }
 
-        if (Array.isArray(payload.fields)) {
+        if (payload.f && typeof payload.f === "object" && !Array.isArray(payload.f)) {
             if (lines.length > 0) {
                 lines.push("");
             }
 
-            payload.fields.forEach(field => {
-                const label = field && field.label ? field.label : "Field";
-                const value = field ? field.value : undefined;
+            Object.keys(payload.f).forEach(entryId => {
+                const field = payload.f[entryId];
+                const label = field && field.n ? field.n : "Field";
+                const value = field ? field.v : undefined;
 
                 if (value !== undefined && value !== null && String(value).trim()) {
                     lines.push(label + ": " + (Array.isArray(value) ? value.join(", ") : value));
@@ -55,6 +115,12 @@ function formatRfidData(data) {
         }
 
         return lines.length > 0 ? lines.join("\n") : fallback;
+    }
+
+    const compact = displayCompactForm(data);
+
+    if (compact) {
+        return compact;
     }
 
     try {
