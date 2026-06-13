@@ -114,6 +114,12 @@ document.querySelectorAll('input[name="writeSource"]').forEach(r => {
 
 blockData.addEventListener("input", saveRFIDConfig);
 
+const formUrlInput = formWriter.querySelector("[data-form-url]");
+
+if (formUrlInput) {
+    formUrlInput.value = "";
+}
+
 createFormWriter({
     rootId: "formWriter",
     outputId: "formPayload",

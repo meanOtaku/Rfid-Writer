@@ -48,16 +48,37 @@ function createFormWriter(options) {
         }
     }
 
+    function cacheBustedUrl(url, nonce) {
+        try {
+            const parsed = new URL(url);
+
+            parsed.searchParams.set("_rfid_refresh", nonce);
+            return parsed.toString();
+        } catch (err) {
+            const separator = url.includes("?") ? "&" : "?";
+
+            return url + separator + "_rfid_refresh=" + encodeURIComponent(nonce);
+        }
+    }
+
     async function fetchText(url) {
+        const nonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const freshUrl = cacheBustedUrl(url, nonce);
         const urls = [
-            url,
-            "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
-            "https://corsproxy.io/?" + encodeURIComponent(url)
+            freshUrl,
+            "https://api.allorigins.win/raw?url=" + encodeURIComponent(freshUrl) + "&_rfid_refresh=" + nonce,
+            "https://corsproxy.io/?" + encodeURIComponent(freshUrl)
         ];
 
         for (const candidate of urls) {
             try {
-                const response = await fetch(candidate);
+                const response = await fetch(candidate, {
+                    cache: "no-store",
+                    headers: {
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache"
+                    }
+                });
 
                 if (response.ok) {
                     const text = await response.text();
