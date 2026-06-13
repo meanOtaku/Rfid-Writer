@@ -18,6 +18,10 @@ function getWriteData() {
     return getWriteSource() === "form" ? formPayload.value : blockData.value;
 }
 
+function displayData(value, fallback) {
+    return formatRfidData(value || "") || fallback;
+}
+
 function updateWriteSourceUI() {
     const isWriteMode = getRFIDMode() === "write";
     const useForm = getWriteSource() === "form";
@@ -56,7 +60,7 @@ socket.onmessage = e => {
 
     if (data.type === "rfid_read") {
         const readText = data.success !== false
-            ? (formatRfidData(data.data) || "Empty NDEF message")
+            ? displayData(data.data, "Empty NDEF message")
             : "Read failed: " + (data.error || "unknown");
 
         rfidUid.innerText = data.uid;
@@ -78,7 +82,7 @@ socket.onmessage = e => {
             : "NDEF Write Failed: " + (data.error || "unknown");
 
         document.getElementById("readResult").innerText = data.success
-            ? "Wrote NDEF message:\n" + (formatRfidData(data.data || getWriteData()) || "")
+            ? "Wrote NDEF message:\n" + displayData(data.data || getWriteData(), "Empty NDEF message")
             : "Write failed: " + (data.error || "unknown");
     }
 
